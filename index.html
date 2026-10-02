@@ -169,6 +169,21 @@ tbody tr:hover{background:var(--bg)}
 .anav .pill{text-align:left;font-size:12px;padding:9px 12px;border-width:1px;min-width:0}
 .anav .pill.on{background:var(--accent2);color:var(--accent);border-color:var(--accent)}
 .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.admstats{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:9px}
+.astat{background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);padding:11px}
+.astat .av2{font-size:19px;font-weight:700;line-height:1.2}
+.astat .al{font-size:10px;text-transform:uppercase;color:var(--text2);margin-top:3px;font-weight:600}
+.rbadge{display:inline-block;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;text-transform:uppercase}
+.rbadge.admin{background:var(--accent2);color:var(--accent)}
+.rbadge.user{background:var(--bg);color:var(--text2);border:1px solid var(--border)}
+.rbadge.banned{background:#ffe5e5;color:#c00}
+.acts{display:flex;gap:5px;flex-wrap:wrap}
+.acts .btn{padding:5px 9px;font-size:11px}
+.aucard{background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:14px;margin-bottom:12px}
+.aurow{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.aurow:last-child{border-bottom:none}
+.aurow .k{color:var(--text2)}
+.aurow .v{font-weight:600;text-align:right}
 .topt{border:2px solid var(--border);border-radius:var(--rs);padding:10px;cursor:pointer;text-align:center}
 .topt.on{border-color:var(--accent)}
 .tswatch{height:44px;border-radius:6px;margin-bottom:6px}
@@ -408,6 +423,7 @@ tbody tr:hover{background:var(--bg)}
             <button class="pill" data-a="set" onclick="adminTab('set')">⚙️ Settings</button>
             <button class="pill" data-a="qa" onclick="adminTab('qa')">💲 Nominal Cepat</button>
             <button class="pill" data-a="bk" onclick="adminTab('bk')">💾 Backup</button>
+            <button class="pill hid" data-a="usr" id="navUsr" onclick="adminTab('usr')">👥 Users</button>
           </div>
         </div>
         <div class="card">
@@ -443,8 +459,26 @@ tbody tr:hover{background:var(--bg)}
             <div class="dv"></div>
             <div class="fg"><label>Hapus Semua Data</label><div class="chs" style="margin-bottom:7px">Tidak bisa dibatalkan.</div><button class="btn btn-d" onclick="wipe()">🗑️ Hapus Semua Data</button></div>
           </div>
+          <div id="a-usr" class="hid">
+            <div class="ch"><span class="cht">👥 Manajemen User</span><button class="btn btn-s btn-sm" onclick="loadAdminUsers()">🔄 Refresh</button></div>
+            <div id="admStats" class="admstats"></div>
+            <div class="tblwrap" style="margin-top:14px"><table>
+              <thead><tr><th>User</th><th>Role</th><th>Transaksi</th><th>Status</th><th>Aksi</th></tr></thead>
+              <tbody id="admUserBody"></tbody>
+            </table></div>
+            <div class="chs" id="admUserNote" style="margin-top:10px"></div>
+          </div>
         </div>
       </div>
+    </div>
+
+    <!-- ADMIN: DETAIL USER -->
+    <div class="page" id="p-admuser">
+      <div class="phead">
+        <div><h2 id="auTitle">Detail User</h2><p class="sub" id="auSub">Data yang di-input user ini</p></div>
+        <button class="btn btn-s btn-sm" onclick="go('admin');adminTab('usr')">← Kembali</button>
+      </div>
+      <div id="auBody"></div>
     </div>
 
     <!-- PROFILE -->
@@ -774,7 +808,7 @@ function enterApp(){
   lsSet('cf_user',user);
   $('authView').classList.add('hid');
   $('appView').classList.add('on');
-  cloudPull(function(){ renderAll(); toast('Selamat datang, '+(user.name||'User')+'!','ok'); });
+  cloudPull(function(){ renderAll(); checkAdmin(); toast('Selamat datang, '+(user.name||'User')+'!','ok'); });
 }
 
 function doLogout(){
@@ -1584,13 +1618,154 @@ function saveSettings(){
   toast('Settings disimpan ✓','ok');
 }
 function adminTab(t){
-  ['cat','theme','set','qa','bk'].forEach(function(k){
+  ['cat','theme','set','qa','bk','usr'].forEach(function(k){
     var el=$('a-'+k); if(el) el.classList.toggle('hid',k!==t);
   });
   document.querySelectorAll('.anav .pill').forEach(function(b){
     b.classList.toggle('on', b.getAttribute('data-a')===t);
   });
+  if(t==='usr') loadAdminUsers();
 }
+
+/* ---------- ADMIN: MANAJEMEN USER ---------- */
+var isAdminUser = false;
+var admUsersCache = [];
+
+function checkAdmin(){
+  if(mode!=='cloud' || !sb || !user || String(user.id).indexOf('local:')===0){
+    isAdminUser = false;
+    var nb=$('navUsr'); if(nb) nb.classList.add('hid');
+    return;
+  }
+  sb.rpc('is_admin').then(function(r){
+    isAdminUser = (r.data === true);
+    var nb=$('navUsr'); if(nb) nb.classList.toggle('hid', !isAdminUser);
+  }).catch(function(){ isAdminUser=false; });
+}
+
+function loadAdminUsers(){
+  var body=$('admUserBody');
+  if(!body) return;
+  if(!isAdminUser){
+    body.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:20px">Akun ini bukan admin.</td></tr>';
+    var st=$('admStats'); if(st) st.innerHTML='';
+    return;
+  }
+  body.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:20px">Memuat…</td></tr>';
+
+  sb.rpc('admin_stats').then(function(r){
+    if(r.error){ toast('Gagal ambil statistik: '+r.error.message,'err'); return; }
+    var s=r.data||{};
+    $('admStats').innerHTML =
+      stat('Total User', s.total_users) +
+      stat('Admin', s.total_admins) +
+      stat('Dibanned', s.total_banned) +
+      stat('Aktif 7 Hari', s.active_7d) +
+      stat('Total Transaksi', s.total_tx) +
+      stat('Pemasukan', rp(s.total_income)) +
+      stat('Pengeluaran', rp(s.total_expense)) +
+      stat('Dompet', s.total_wallets);
+  });
+
+  sb.rpc('admin_users').then(function(r){
+    if(r.error){
+      body.innerHTML='<tr><td colspan="5" style="text-align:center;color:#c00;padding:20px">'+esc(r.error.message)+'</td></tr>';
+      return;
+    }
+    admUsersCache = r.data||[];
+    if(!admUsersCache.length){
+      body.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:20px">Belum ada user.</td></tr>';
+      return;
+    }
+    body.innerHTML = admUsersCache.map(function(u){
+      var me = (u.id===user.id);
+      var badge = '<span class="rbadge '+u.role+'">'+u.role+'</span>';
+      if(u.banned) badge += ' <span class="rbadge banned">banned</span>';
+      var acts = '<div class="acts">'+
+        '<button class="btn btn-s" onclick="admDetail(\''+u.id+'\')">👁️ Data</button>'+
+        (me ? '<span class="chs">(kamu)</span>' :
+          '<button class="btn btn-s" onclick="admToggleRole(\''+u.id+'\',\''+u.role+'\')">'+(u.role==='admin'?'⬇️ Jadi User':'⬆️ Jadi Admin')+'</button>'+
+          '<button class="btn btn-s" onclick="admToggleBan(\''+u.id+'\','+(u.banned?'false':'true')+')">'+(u.banned?'✅ Unban':'🚫 Ban')+'</button>'+
+          '<button class="btn btn-d" onclick="admPurge(\''+u.id+'\')">🗑️</button>'
+        )+
+      '</div>';
+      return '<tr>'+
+        '<td><div style="font-weight:600">'+esc(u.name||'-')+'</div><div class="chs">'+esc(u.email||'-')+'</div></td>'+
+        '<td>'+badge+'</td>'+
+        '<td><div>'+u.tx_count+' tx</div><div class="chs">+'+rp(u.tx_income)+' / -'+rp(u.tx_expense)+'</div></td>'+
+        '<td><div class="chs">'+(u.last_active?('Terakhir: '+u.last_active):'Belum ada data')+'</div></td>'+
+        '<td>'+acts+'</td>'+
+      '</tr>';
+    }).join('');
+    $('admUserNote').textContent = admUsersCache.length+' user terdaftar.';
+  });
+}
+function stat(label, val){
+  return '<div class="astat"><div class="av2">'+esc(String(val==null?0:val))+'</div><div class="al">'+esc(label)+'</div></div>';
+}
+
+function admToggleRole(id, cur){
+  var next = cur==='admin' ? 'user' : 'admin';
+  if(!confirm('Ubah role user ini jadi "'+next+'"?')) return;
+  sb.rpc('admin_set_role',{target:id, new_role:next}).then(function(r){
+    if(r.error){ toast(r.error.message,'err'); return; }
+    toast('Role diubah ke '+next,'ok'); loadAdminUsers();
+  });
+}
+function admToggleBan(id, val){
+  if(!confirm(val?'Ban user ini? Mereka tidak bisa akses lagi.':'Unban user ini?')) return;
+  sb.rpc('admin_set_ban',{target:id, val:val}).then(function(r){
+    if(r.error){ toast(r.error.message,'err'); return; }
+    toast(val?'User dibanned':'User di-unban','ok'); loadAdminUsers();
+  });
+}
+function admPurge(id){
+  if(!confirm('HAPUS SEMUA DATA user ini (transaksi, kategori, dompet, dll)?\n\nTidak bisa dibatalkan!')) return;
+  if(!confirm('Yakin? Ini permanen.')) return;
+  sb.rpc('admin_purge_user',{target:id}).then(function(r){
+    if(r.error){ toast(r.error.message,'err'); return; }
+    toast('Semua data user dihapus','ok'); loadAdminUsers();
+  });
+}
+
+function admDetail(id){
+  var u = admUsersCache.filter(function(x){ return x.id===id; })[0];
+  if(!u) return;
+  $('auTitle').textContent = u.name || u.email;
+  $('auSub').textContent = u.email;
+  $('auBody').innerHTML =
+    '<div class="aucard">'+
+      row('Email', u.email)+
+      row('Nama', u.name||'-')+
+      row('Role', u.role)+
+      row('Status', u.banned?'Dibanned':'Aktif')+
+      row('Terdaftar', (u.created_at||'').slice(0,10))+
+      row('Terakhir Aktif', u.last_active||'Belum ada data')+
+    '</div>'+
+    '<div class="aucard">'+
+      row('Jumlah Transaksi', u.tx_count)+
+      row('Total Pemasukan', rp(u.tx_income))+
+      row('Total Pengeluaran', rp(u.tx_expense))+
+      row('Selisih', rp(Number(u.tx_income)-Number(u.tx_expense)))+
+    '</div>'+
+    '<div class="aucard">'+
+      '<div class="ch"><span class="cht">Transaksi Terbaru</span></div>'+
+      '<div id="auTx" class="chs">Memuat…</div>'+
+    '</div>';
+  go('admuser');
+
+  sb.from('transactions').select('*').eq('user_id',id).order('date',{ascending:false}).limit(30).then(function(r){
+    var el=$('auTx'); if(!el) return;
+    if(r.error){ el.textContent='Gagal ambil data: '+r.error.message; return; }
+    var rows=r.data||[];
+    if(!rows.length){ el.textContent='User ini belum mencatat transaksi.'; return; }
+    el.innerHTML='<div class="tblwrap"><table><thead><tr><th>Tanggal</th><th>Nama</th><th>Tipe</th><th>Jumlah</th></tr></thead><tbody>'+
+      rows.map(function(t){
+        return '<tr><td>'+esc(t.date)+'</td><td>'+esc(t.name)+'</td><td>'+(t.type==='inc'?'Masuk':'Keluar')+'</td><td>'+rp(t.amount)+'</td></tr>';
+      }).join('')+'</tbody></table></div>';
+  });
+}
+function row(k,v){ return '<div class="aurow"><span class="k">'+esc(k)+'</span><span class="v">'+esc(String(v==null?'-':v))+'</span></div>'; }
 
 /* ---------- PROFILE ---------- */
 function renderProfile(){
@@ -1685,6 +1860,7 @@ function go(p){
   if(p==='rep') renderReport();
   if(p==='admin'){ renderAdminCats(); renderAdminQa(); renderThemes(); }
   if(p==='prof') renderProfile();
+  if(p==='admuser'){ /* sudah dirender oleh admDetail */ }
   window.scrollTo(0,0);
 }
 function openM(id){ var e=$(id); if(e) e.classList.add('on'); }
