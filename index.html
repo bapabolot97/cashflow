@@ -653,7 +653,7 @@ function loadLocal(){
     qas=JSON.parse(JSON.stringify(DEFAULT_QAS));
   }
   var s=lsGet('cf_settings',null); if(s) S=Object.assign(S,s);
-  mode=lsGet('cf_mode','local');
+  mode=lsGet('cf_mode','cloud');
   if(!cats.length) cats=JSON.parse(JSON.stringify(DEFAULT_CATS));
   if(!qas.length) qas=JSON.parse(JSON.stringify(DEFAULT_QAS));
 }
