@@ -616,6 +616,7 @@ tbody tr:hover{background:var(--bg)}
             <button class="pill" data-a="qa" onclick="adminTab('qa')">💲 Nominal Cepat</button>
             <button class="pill" data-a="bk" onclick="adminTab('bk')">💾 Backup</button>
             <button class="pill hid" data-a="usr" id="navUsr" onclick="adminTab('usr')">👥 Users</button>
+            <button class="pill hid" data-a="logs" id="navLogs" onclick="adminTab('logs')">📋 Riwayat Login</button>
           </div>
         </div>
         <div class="card">
@@ -659,6 +660,23 @@ tbody tr:hover{background:var(--bg)}
               <tbody id="admUserBody"></tbody>
             </table></div>
             <div class="chs" id="admUserNote" style="margin-top:10px"></div>
+          </div>
+          <div id="a-logs" class="hid">
+            <div class="ch">
+              <div>
+                <span class="cht">📋 Riwayat Aktivitas Login</span>
+                <div class="chs">Daftar waktu &amp; perangkat pengguna saat masuk sistem</div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-s btn-sm" onclick="loadAdminLoginLogs()">🔄 Refresh</button>
+                <button class="btn btn-d btn-sm" onclick="clearAdminLoginLogs()">🗑️ Bersihkan</button>
+              </div>
+            </div>
+            <div class="tblwrap" style="margin-top:14px"><table>
+              <thead><tr><th>Waktu Login</th><th>Username</th><th>Role</th><th>Perangkat / Browser</th><th>Status</th></tr></thead>
+              <tbody id="admLogsBody"></tbody>
+            </table></div>
+            <div class="chs" id="admLogsNote" style="margin-top:10px"></div>
           </div>
         </div>
       </div>
@@ -1105,11 +1123,18 @@ function enterApp(){
   $('authView').classList.add('hid');
   $('appView').classList.add('on');
   cloudPull(function(){ renderAll(); checkAdmin(); toast('Selamat datang, '+(user.name||'User')+'!','ok'); });
+  if(sb && !sessionStorage.getItem('cf_log_sent')){
+    sessionStorage.setItem('cf_log_sent','1');
+    try {
+      sb.rpc('log_user_login', { p_agent: navigator.userAgent }).catch(function(){});
+    } catch(e){}
+  }
 }
 
 function doLogout(){
   if(sb){ try{ sb.auth.signOut(); }catch(e){} }
   user=null; lsSet('cf_user',null);
+  sessionStorage.removeItem('cf_log_sent');
   $('authView').classList.remove('hid');
   $('appView').classList.remove('on');
   $('le').value=''; $('lp').value='';
@@ -2400,13 +2425,14 @@ function saveSettings(){
   toast('Settings disimpan ✓','ok');
 }
 function adminTab(t){
-  ['cat','theme','set','qa','bk','usr'].forEach(function(k){
+  ['cat','theme','set','qa','bk','usr','logs'].forEach(function(k){
     var el=$('a-'+k); if(el) el.classList.toggle('hid',k!==t);
   });
   document.querySelectorAll('.anav .pill').forEach(function(b){
     b.classList.toggle('on', b.getAttribute('data-a')===t);
   });
   if(t==='usr') loadAdminUsers();
+  if(t==='logs') loadAdminLoginLogs();
 }
 
 /* ---------- ADMIN: MANAJEMEN USER ---------- */
@@ -2417,11 +2443,13 @@ function checkAdmin(){
   if(mode!=='cloud' || !sb || !user || String(user.id).indexOf('local:')===0){
     isAdminUser = false;
     var nb=$('navUsr'); if(nb) nb.classList.add('hid');
+    var nl=$('navLogs'); if(nl) nl.classList.add('hid');
     return;
   }
   sb.rpc('is_admin').then(function(r){
     isAdminUser = (r.data === true);
     var nb=$('navUsr'); if(nb) nb.classList.toggle('hid', !isAdminUser);
+    var nl=$('navLogs'); if(nl) nl.classList.toggle('hid', !isAdminUser);
   }).catch(function(){ isAdminUser=false; });
 }
 
@@ -2550,6 +2578,111 @@ function admDetail(id){
   });
 }
 function row(k,v){ return '<div class="aurow"><span class="k">'+esc(k)+'</span><span class="v">'+esc(String(v==null?'-':v))+'</span></div>'; }
+
+/* ---------- ADMIN: RIWAYAT LOGIN ---------- */
+function parseDevice(ua){
+  if(!ua) return 'Web Browser';
+  ua = String(ua);
+  var lower = ua.toLowerCase();
+  if(lower.indexOf('sesi login') !== -1) return ua;
+
+  var os = 'Desktop';
+  var icon = '💻';
+  if(lower.indexOf('iphone') !== -1 || lower.indexOf('ipad') !== -1 || lower.indexOf('ios') !== -1){
+    os = 'iPhone / iOS'; icon = '📱';
+  } else if(lower.indexOf('android') !== -1){
+    os = 'Android'; icon = '🤖';
+  } else if(lower.indexOf('windows nt 10') !== -1 || lower.indexOf('windows nt 11') !== -1 || lower.indexOf('windows') !== -1){
+    os = 'Windows PC'; icon = '💻';
+  } else if(lower.indexOf('macintosh') !== -1 || lower.indexOf('mac os') !== -1){
+    os = 'macOS'; icon = '🍏';
+  } else if(lower.indexOf('linux') !== -1){
+    os = 'Linux'; icon = '🐧';
+  }
+
+  var browser = '';
+  if(lower.indexOf('edg/') !== -1){
+    browser = 'Edge';
+  } else if(lower.indexOf('chrome/') !== -1 && lower.indexOf('safari/') !== -1 && lower.indexOf('edg/') === -1){
+    browser = 'Chrome';
+  } else if(lower.indexOf('safari/') !== -1 && lower.indexOf('chrome/') === -1){
+    browser = 'Safari';
+  } else if(lower.indexOf('firefox/') !== -1){
+    browser = 'Firefox';
+  }
+
+  return icon + ' ' + os + (browser ? (' (' + browser + ')') : '');
+}
+
+function formatRelativeTime(dateStr){
+  if(!dateStr) return '-';
+  var d = new Date(dateStr);
+  if(isNaN(d.getTime())) return dateStr;
+  var now = new Date();
+  var diffSec = Math.floor((now - d) / 1000);
+  if(diffSec < 45) return 'Baru saja';
+  var diffMin = Math.floor(diffSec / 60);
+  if(diffMin < 60) return diffMin + ' menit lalu';
+  var diffHr = Math.floor(diffMin / 60);
+  if(diffHr < 24) return diffHr + ' jam lalu';
+  var diffDay = Math.floor(diffHr / 24);
+  if(diffDay < 7) return diffDay + ' hari lalu';
+  return dShort(d.toISOString().slice(0,10));
+}
+
+function loadAdminLoginLogs(){
+  var body = $('admLogsBody');
+  if(!body) return;
+  if(!isAdminUser){
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:20px">Akun ini bukan admin.</td></tr>';
+    return;
+  }
+  body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:20px">Memuat data riwayat login…</td></tr>';
+
+  sb.rpc('admin_get_login_logs', { p_limit: 100 }).then(function(r){
+    if(r.error){
+      body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:20px">'+esc(r.error.message)+'</td></tr>';
+      return;
+    }
+    var list = r.data || [];
+    if(!list.length){
+      body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:20px">Belum ada riwayat login tercatat.</td></tr>';
+      if($('admLogsNote')) $('admLogsNote').textContent = '';
+      return;
+    }
+
+    body.innerHTML = list.map(function(item){
+      var d = new Date(item.logged_at);
+      var timeStr = isNaN(d.getTime()) ? (item.logged_at||'-') : (dShort(d.toISOString().slice(0,10)) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()));
+      var rel = formatRelativeTime(item.logged_at);
+      var uname = cleanUname(item.username || item.email);
+      var dev = parseDevice(item.user_agent);
+      var badge = '<span class="rbadge '+(item.role==='admin'?'admin':'user')+'">'+esc(item.role||'user')+'</span>';
+      var stBadge = '<span class="rbadge admin" style="background:#e8f5e9;color:#2e7d32">Sukses</span>';
+
+      return '<tr>'+
+        '<td><div style="font-weight:600">'+esc(timeStr)+'</div><div class="chs">'+esc(rel)+'</div></td>'+
+        '<td><div style="font-weight:600">@'+esc(uname)+'</div><div class="chs">'+esc(item.email||'')+'</div></td>'+
+        '<td>'+badge+'</td>'+
+        '<td><div style="font-weight:500">'+esc(dev)+'</div><div class="chs" style="font-size:10px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(item.user_agent||'')+'">'+esc(item.user_agent||'-')+'</div></td>'+
+        '<td>'+stBadge+'</td>'+
+      '</tr>';
+    }).join('');
+
+    if($('admLogsNote')) $('admLogsNote').textContent = 'Menampilkan ' + list.length + ' riwayat login terakhir.';
+  }).catch(function(e){
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:20px">Gagal memuat log: '+esc(e.message)+'</td></tr>';
+  });
+}
+
+function clearAdminLoginLogs(){
+  if(!confirm('Hapus semua riwayat login? Tindakan ini tidak dapat dibatalkan.')) return;
+  sb.rpc('admin_clear_login_logs').then(function(r){
+    if(r.error){ toast(r.error.message, 'err'); return; }
+    toast('Riwayat login berhasil dibersihkan ✓', 'ok');
+    loadAdminLoginLogs();
+  });
+}
 
 /* ---------- PROFILE ---------- */
 function renderProfile(){
