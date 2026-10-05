@@ -1,0 +1,653 @@
+{
+  "exported_at": "2026-10-05T07:29:55.294Z",
+  "project": "CashFlow App",
+  "database": "xmgdrigxjiazmseyspup",
+  "users": [
+    {
+      "id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+      "email": "admin123@cashflow.app",
+      "confirmed_at": "2026-10-02 07:43:04.682129+00",
+      "last_sign_in_at": "2026-10-05 07:25:52.23699+00",
+      "created_at": "2026-10-02 07:43:04.649812+00",
+      "raw_user_meta_data": {
+        "sub": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Administrator",
+        "email": "admin123@cashflow.app",
+        "email_verified": true,
+        "phone_verified": false
+      }
+    },
+    {
+      "id": "920674c0-ecd6-46d8-a7d7-f40aece3d62f",
+      "email": "admin@cashflow.app",
+      "confirmed_at": "2026-10-05 02:54:07.275585+00",
+      "last_sign_in_at": "2026-10-05 06:43:30.219478+00",
+      "created_at": "2026-10-05 02:54:07.226021+00",
+      "raw_user_meta_data": {
+        "sub": "920674c0-ecd6-46d8-a7d7-f40aece3d62f",
+        "name": "Admin",
+        "email": "admin@cashflow.app",
+        "email_verified": true,
+        "phone_verified": false
+      }
+    },
+    {
+      "id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+      "email": "bapab@cashflow.app",
+      "confirmed_at": "2026-10-05 03:10:47.308035+00",
+      "last_sign_in_at": "2026-10-05 06:43:30.79377+00",
+      "created_at": "2026-10-05 03:10:47.260068+00",
+      "raw_user_meta_data": {
+        "sub": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "city": "",
+        "name": "bapa bolot",
+        "email": "bapab@cashflow.app",
+        "phone": "",
+        "username": "bapab",
+        "email_verified": true,
+        "phone_verified": false
+      }
+    },
+    {
+      "id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+      "email": "vdwiesti@cashflow.app",
+      "confirmed_at": "2026-10-05 06:14:06.71731+00",
+      "last_sign_in_at": "2026-10-05 06:43:31.155394+00",
+      "created_at": "2026-10-05 06:14:06.685188+00",
+      "raw_user_meta_data": {
+        "sub": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Vid",
+        "email": "vdwiesti@cashflow.app",
+        "username": "vdwiesti",
+        "email_verified": true,
+        "phone_verified": false
+      }
+    }
+  ],
+  "tables": {
+    "profiles": [
+      {
+        "id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "email": "admin123@cashflow.app",
+        "name": "Administrator",
+        "role": "admin",
+        "banned": false,
+        "created_at": "2026-10-02 07:43:04.649469+00"
+      },
+      {
+        "id": "920674c0-ecd6-46d8-a7d7-f40aece3d62f",
+        "email": "admin@cashflow.app",
+        "name": "Admin",
+        "role": "admin",
+        "banned": false,
+        "created_at": "2026-10-05 02:54:07.224826+00"
+      },
+      {
+        "id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "email": "vdwiesti@cashflow.app",
+        "name": "Vid",
+        "role": "user",
+        "banned": false,
+        "created_at": "2026-10-05 06:14:06.683538+00"
+      },
+      {
+        "id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "email": "bapab@cashflow.app",
+        "name": "bapa bolot",
+        "role": "admin",
+        "banned": false,
+        "created_at": "2026-10-05 03:10:47.251649+00"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "4f336042-d061-4947-ba7a-8f1ec20b7a0b",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Transport",
+        "type": "exp",
+        "amount": "759882",
+        "category": "2a7e0dd0-c9b8-478b-a4eb-a454ce7da2e7",
+        "date": "2026-10-05",
+        "time": "10:11",
+        "wallet_id": null,
+        "note": "",
+        "recurring_id": null,
+        "created_at": "2026-10-05 03:11:17.842967+00"
+      },
+      {
+        "id": "4db712aa-7eaa-4d15-a024-7974a8156c47",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Gaji",
+        "type": "inc",
+        "amount": "4000000",
+        "category": "8199b418-20e2-4abd-a243-4102e7d67c8b",
+        "date": "2026-10-05",
+        "time": "10:11",
+        "wallet_id": null,
+        "note": "",
+        "recurring_id": null,
+        "created_at": "2026-10-05 03:11:26.151912+00"
+      },
+      {
+        "id": "eaee59db-0f80-41b4-880d-0a941d56ebd5",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Makan",
+        "type": "exp",
+        "amount": "25000",
+        "category": "944c932b-e3a4-47f9-8e3c-4fba51737cad",
+        "date": "2026-10-05",
+        "time": "13:15",
+        "wallet_id": null,
+        "note": "",
+        "recurring_id": null,
+        "created_at": "2026-10-05 06:15:07.991308+00"
+      }
+    ],
+    "categories": [
+      {
+        "id": "36fd2e40-136e-41ae-8162-eeba4023e2f4",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Makan",
+        "icon": "🍽️",
+        "type": "exp",
+        "color": "#007aff",
+        "created_at": "2026-10-05 03:10:04.58265+00"
+      },
+      {
+        "id": "eec20f4c-002e-4511-830e-f3bfcce0164a",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Kopi",
+        "icon": "☕",
+        "type": "exp",
+        "color": "#ff9500",
+        "created_at": "2026-10-05 03:10:04.58265+00"
+      },
+      {
+        "id": "0ced8165-f286-4de2-86ba-1b92aa214d89",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Transport",
+        "icon": "🚗",
+        "type": "exp",
+        "color": "#af52de",
+        "created_at": "2026-10-05 03:10:04.58265+00"
+      },
+      {
+        "id": "b28976fd-4842-4c84-8728-8554603c141c",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Belanja",
+        "icon": "🛍️",
+        "type": "exp",
+        "color": "#ff3b30",
+        "created_at": "2026-10-05 03:10:04.58265+00"
+      },
+      {
+        "id": "fa792ca4-01f5-4fd5-9559-d3bfe1ca9264",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Tagihan",
+        "icon": "🧾",
+        "type": "exp",
+        "color": "#5856d6",
+        "created_at": "2026-10-05 03:10:04.58265+00"
+      },
+      {
+        "id": "28e5d783-db60-4f8e-afca-795222f4bca1",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Gaji",
+        "icon": "💰",
+        "type": "inc",
+        "color": "#34c759",
+        "created_at": "2026-10-05 03:10:04.58265+00"
+      },
+      {
+        "id": "ce75f7e2-e0dd-4e9e-8db2-a9fb7187a471",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Bonus",
+        "icon": "🎁",
+        "type": "inc",
+        "color": "#5ac8fa",
+        "created_at": "2026-10-05 03:10:04.58265+00"
+      },
+      {
+        "id": "ddf86ccb-f0ea-4c97-a2ef-00dd94f735fa",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Lain",
+        "icon": "📦",
+        "type": "both",
+        "color": "#8e8e93",
+        "created_at": "2026-10-05 03:10:04.58265+00"
+      },
+      {
+        "id": "81fea8d1-cb95-4e2c-96c2-2ae633dd622d",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Makan",
+        "icon": "🍽️",
+        "type": "exp",
+        "color": "#007aff",
+        "created_at": "2026-10-05 03:10:04.924518+00"
+      },
+      {
+        "id": "101629b8-2e0c-4a8f-bfd2-1ccee9318a80",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Kopi",
+        "icon": "☕",
+        "type": "exp",
+        "color": "#ff9500",
+        "created_at": "2026-10-05 03:10:04.924518+00"
+      },
+      {
+        "id": "32897046-951c-4575-80b8-4d31a048cf8e",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Transport",
+        "icon": "🚗",
+        "type": "exp",
+        "color": "#af52de",
+        "created_at": "2026-10-05 03:10:04.924518+00"
+      },
+      {
+        "id": "b1a911ec-c17a-4b9a-ab97-1bc400564948",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Belanja",
+        "icon": "🛍️",
+        "type": "exp",
+        "color": "#ff3b30",
+        "created_at": "2026-10-05 03:10:04.924518+00"
+      },
+      {
+        "id": "2aad72bc-5b7c-46af-bd4c-75a0934552bb",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Tagihan",
+        "icon": "🧾",
+        "type": "exp",
+        "color": "#5856d6",
+        "created_at": "2026-10-05 03:10:04.924518+00"
+      },
+      {
+        "id": "eecf38bc-e7b7-4bcd-97c2-88c8b815e3e0",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Gaji",
+        "icon": "💰",
+        "type": "inc",
+        "color": "#34c759",
+        "created_at": "2026-10-05 03:10:04.924518+00"
+      },
+      {
+        "id": "a88a70bf-73bf-4f74-8a91-ba403970c6af",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Bonus",
+        "icon": "🎁",
+        "type": "inc",
+        "color": "#5ac8fa",
+        "created_at": "2026-10-05 03:10:04.924518+00"
+      },
+      {
+        "id": "dcf4e43d-e82c-4b58-abdb-fec1f5138621",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "name": "Lain",
+        "icon": "📦",
+        "type": "both",
+        "color": "#8e8e93",
+        "created_at": "2026-10-05 03:10:04.924518+00"
+      },
+      {
+        "id": "2a3c4171-95dd-49f2-bf79-404367bbb2b7",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Makan",
+        "icon": "🍽️",
+        "type": "exp",
+        "color": "#007aff",
+        "created_at": "2026-10-05 03:10:48.393559+00"
+      },
+      {
+        "id": "ed933af6-d78c-4174-9e6b-d4e3c85811c3",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Kopi",
+        "icon": "☕",
+        "type": "exp",
+        "color": "#ff9500",
+        "created_at": "2026-10-05 03:10:48.393559+00"
+      },
+      {
+        "id": "2a7e0dd0-c9b8-478b-a4eb-a454ce7da2e7",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Transport",
+        "icon": "🚗",
+        "type": "exp",
+        "color": "#af52de",
+        "created_at": "2026-10-05 03:10:48.393559+00"
+      },
+      {
+        "id": "75f8fea6-85a1-43a7-9caf-c8df06aba0aa",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Belanja",
+        "icon": "🛍️",
+        "type": "exp",
+        "color": "#ff3b30",
+        "created_at": "2026-10-05 03:10:48.393559+00"
+      },
+      {
+        "id": "a5433f82-3c47-4ba4-b8e4-358f1b8d83b1",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Tagihan",
+        "icon": "🧾",
+        "type": "exp",
+        "color": "#5856d6",
+        "created_at": "2026-10-05 03:10:48.393559+00"
+      },
+      {
+        "id": "8199b418-20e2-4abd-a243-4102e7d67c8b",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Gaji",
+        "icon": "💰",
+        "type": "inc",
+        "color": "#34c759",
+        "created_at": "2026-10-05 03:10:48.393559+00"
+      },
+      {
+        "id": "d6209887-5732-4768-b620-5eea1d32e072",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Bonus",
+        "icon": "🎁",
+        "type": "inc",
+        "color": "#5ac8fa",
+        "created_at": "2026-10-05 03:10:48.393559+00"
+      },
+      {
+        "id": "785d8dea-109f-48a0-96c8-f63bde43b6c8",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Lain",
+        "icon": "📦",
+        "type": "both",
+        "color": "#8e8e93",
+        "created_at": "2026-10-05 03:10:48.393559+00"
+      },
+      {
+        "id": "325886c7-69b4-4fe7-9447-1e1c9b5982b6",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Makan",
+        "icon": "🍽️",
+        "type": "exp",
+        "color": "#007aff",
+        "created_at": "2026-10-05 03:10:48.57461+00"
+      },
+      {
+        "id": "aa330cdb-4606-4023-8a37-6e8c30388a46",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Kopi",
+        "icon": "☕",
+        "type": "exp",
+        "color": "#ff9500",
+        "created_at": "2026-10-05 03:10:48.57461+00"
+      },
+      {
+        "id": "4fd3e034-ffbc-4aaf-a7c5-11a8c93dec36",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Transport",
+        "icon": "🚗",
+        "type": "exp",
+        "color": "#af52de",
+        "created_at": "2026-10-05 03:10:48.57461+00"
+      },
+      {
+        "id": "7da81d4d-e27f-4f35-95d3-e9456a536050",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Belanja",
+        "icon": "🛍️",
+        "type": "exp",
+        "color": "#ff3b30",
+        "created_at": "2026-10-05 03:10:48.57461+00"
+      },
+      {
+        "id": "b56236b5-3d88-43a3-9346-e136381a3f8b",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Tagihan",
+        "icon": "🧾",
+        "type": "exp",
+        "color": "#5856d6",
+        "created_at": "2026-10-05 03:10:48.57461+00"
+      },
+      {
+        "id": "325d3d81-e027-4dde-8fce-460a896982f5",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Gaji",
+        "icon": "💰",
+        "type": "inc",
+        "color": "#34c759",
+        "created_at": "2026-10-05 03:10:48.57461+00"
+      },
+      {
+        "id": "f37b2618-5597-4c92-acd0-8ee441aab8cc",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Bonus",
+        "icon": "🎁",
+        "type": "inc",
+        "color": "#5ac8fa",
+        "created_at": "2026-10-05 03:10:48.57461+00"
+      },
+      {
+        "id": "0f45bb48-2683-4506-8042-96ef4efb4649",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "Lain",
+        "icon": "📦",
+        "type": "both",
+        "color": "#8e8e93",
+        "created_at": "2026-10-05 03:10:48.57461+00"
+      },
+      {
+        "id": "944c932b-e3a4-47f9-8e3c-4fba51737cad",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Makan",
+        "icon": "🍽️",
+        "type": "exp",
+        "color": "#007aff",
+        "created_at": "2026-10-05 06:14:07.680538+00"
+      },
+      {
+        "id": "2c036d18-4696-4088-937b-e6be1c84036a",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Kopi",
+        "icon": "☕",
+        "type": "exp",
+        "color": "#ff9500",
+        "created_at": "2026-10-05 06:14:07.680538+00"
+      },
+      {
+        "id": "e4fe851e-2081-4751-a300-7984410128e1",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Transport",
+        "icon": "🚗",
+        "type": "exp",
+        "color": "#af52de",
+        "created_at": "2026-10-05 06:14:07.680538+00"
+      },
+      {
+        "id": "a6cd5cf8-1ff1-4a9b-a381-311259738a41",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Belanja",
+        "icon": "🛍️",
+        "type": "exp",
+        "color": "#ff3b30",
+        "created_at": "2026-10-05 06:14:07.680538+00"
+      },
+      {
+        "id": "5b9487ff-6dc9-45d8-b48e-1ec97be70945",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Tagihan",
+        "icon": "🧾",
+        "type": "exp",
+        "color": "#5856d6",
+        "created_at": "2026-10-05 06:14:07.680538+00"
+      },
+      {
+        "id": "41ad6f8f-240d-4edc-b5e3-9f89980a1ffe",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Gaji",
+        "icon": "💰",
+        "type": "inc",
+        "color": "#34c759",
+        "created_at": "2026-10-05 06:14:07.680538+00"
+      },
+      {
+        "id": "d2eae700-45de-4dc9-98d7-de84c2660af9",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Bonus",
+        "icon": "🎁",
+        "type": "inc",
+        "color": "#5ac8fa",
+        "created_at": "2026-10-05 06:14:07.680538+00"
+      },
+      {
+        "id": "0e5347a8-120d-4499-8ce2-7b19f27b1348",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Transfer",
+        "icon": "⇄",
+        "type": "both",
+        "color": "#5856d6",
+        "created_at": "2026-10-05 06:14:07.680538+00"
+      },
+      {
+        "id": "458b30d5-ccde-4594-9677-cb5ae3e80368",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Lain",
+        "icon": "📦",
+        "type": "both",
+        "color": "#8e8e93",
+        "created_at": "2026-10-05 06:14:07.680538+00"
+      },
+      {
+        "id": "5c36bfd6-967d-465e-83e7-47a2aa202cdd",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Makan",
+        "icon": "🍽️",
+        "type": "exp",
+        "color": "#007aff",
+        "created_at": "2026-10-05 06:14:07.913316+00"
+      },
+      {
+        "id": "df0afe44-f64a-4a20-a3d6-469ca115a2ee",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Kopi",
+        "icon": "☕",
+        "type": "exp",
+        "color": "#ff9500",
+        "created_at": "2026-10-05 06:14:07.913316+00"
+      },
+      {
+        "id": "a374122e-3b8f-476b-890c-f1686e3c33f4",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Transport",
+        "icon": "🚗",
+        "type": "exp",
+        "color": "#af52de",
+        "created_at": "2026-10-05 06:14:07.913316+00"
+      },
+      {
+        "id": "6d88d18a-44c9-4400-b4f9-63afad3d2ec2",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Belanja",
+        "icon": "🛍️",
+        "type": "exp",
+        "color": "#ff3b30",
+        "created_at": "2026-10-05 06:14:07.913316+00"
+      },
+      {
+        "id": "a5b8f958-2109-47c3-88fc-4f2c7f31b053",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Tagihan",
+        "icon": "🧾",
+        "type": "exp",
+        "color": "#5856d6",
+        "created_at": "2026-10-05 06:14:07.913316+00"
+      },
+      {
+        "id": "2da0cd76-719e-40e8-8584-da3981762d94",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Gaji",
+        "icon": "💰",
+        "type": "inc",
+        "color": "#34c759",
+        "created_at": "2026-10-05 06:14:07.913316+00"
+      },
+      {
+        "id": "93de8bc9-89f2-4e22-9d7f-b7683c00b756",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Bonus",
+        "icon": "🎁",
+        "type": "inc",
+        "color": "#5ac8fa",
+        "created_at": "2026-10-05 06:14:07.913316+00"
+      },
+      {
+        "id": "2e75c944-09f2-41f1-ac50-dcb5bbcaaeaf",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Transfer",
+        "icon": "⇄",
+        "type": "both",
+        "color": "#5856d6",
+        "created_at": "2026-10-05 06:14:07.913316+00"
+      },
+      {
+        "id": "c5b9521d-7c08-41fb-9030-14fb43e5d192",
+        "user_id": "c0e4c3f0-2192-44c7-93db-ed4d700a15f3",
+        "name": "Lain",
+        "icon": "📦",
+        "type": "both",
+        "color": "#8e8e93",
+        "created_at": "2026-10-05 06:14:07.913316+00"
+      }
+    ],
+    "wallets": [],
+    "budgets": [
+      {
+        "id": "54df5b94-8b5a-407d-982c-4314d7e77096",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "name": "mabok",
+        "icon": "🎒",
+        "category": "7da81d4d-e27f-4f35-95d3-e9456a536050",
+        "amount": "900000",
+        "created_at": "2026-10-05 03:11:50.285339+00"
+      }
+    ],
+    "recurring": [],
+    "portfolio": [],
+    "settings": [
+      {
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "app_name": "CashFlow",
+        "cur_sym": "Rp",
+        "disp_name": "",
+        "auto_save": true,
+        "theme": "dark",
+        "updated_at": "2026-10-05 07:27:33.290811+00"
+      }
+    ],
+    "login_logs": [
+      {
+        "id": "e934d5f7-86ca-49b9-8970-7fc714177534",
+        "user_id": "42708a5a-acda-4043-b6a3-369adb5e027f",
+        "username": "bapab",
+        "email": "bapab@cashflow.app",
+        "logged_at": "2026-10-05 03:12:08.391442+00",
+        "user_agent": "Sesi Login Terdaftar (Desktop/Mobile)",
+        "status": "success"
+      },
+      {
+        "id": "72478d58-be31-4ecf-9d85-388e913644bb",
+        "user_id": "920674c0-ecd6-46d8-a7d7-f40aece3d62f",
+        "username": "admin",
+        "email": "admin@cashflow.app",
+        "logged_at": "2026-10-05 03:02:46.197314+00",
+        "user_agent": "Sesi Login Terdaftar (Desktop/Mobile)",
+        "status": "success"
+      },
+      {
+        "id": "4e5aa2dd-c035-417e-8481-e8c82dc4e7bf",
+        "user_id": "8d1551bf-2416-45a8-9252-a8373e54d4b7",
+        "username": "admin123",
+        "email": "admin123@cashflow.app",
+        "logged_at": "2026-10-05 03:10:03.187067+00",
+        "user_agent": "Sesi Login Terdaftar (Desktop/Mobile)",
+        "status": "success"
+      }
+    ]
+  }
+}
