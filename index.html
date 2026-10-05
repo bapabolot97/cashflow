@@ -335,6 +335,7 @@ tbody tr:hover{background:var(--bg)}
       </div>
       <div class="card">
         <div class="filters">
+          <select id="fUserScope" class="hid" onchange="onUserScopeChange()" style="font-weight:600;border-color:var(--accent);color:var(--accent);min-width:140px"><option value="me">👤 Transaksi Saya</option><option value="all">👑 Semua User (Admin)</option></select>
           <input type="text" id="fSearch" placeholder="🔍 Cari nama / catatan..." oninput="renderTxPage()" style="flex:1;min-width:160px">
           <select id="fType" onchange="renderTxPage()"><option value="all">Semua Tipe</option><option value="inc">Pemasukan</option><option value="exp">Pengeluaran</option></select>
           <select id="fCat" onchange="renderTxPage()"><option value="all">Semua Kategori</option></select>
@@ -615,6 +616,7 @@ tbody tr:hover{background:var(--bg)}
             <button class="pill" data-a="set" onclick="adminTab('set')">⚙️ Settings</button>
             <button class="pill" data-a="qa" onclick="adminTab('qa')">💲 Nominal Cepat</button>
             <button class="pill" data-a="bk" onclick="adminTab('bk')">💾 Backup</button>
+            <button class="pill hid" data-a="feed" id="navFeed" onclick="adminTab('feed')">⚡ Data &amp; Input User</button>
             <button class="pill hid" data-a="usr" id="navUsr" onclick="adminTab('usr')">👥 Users</button>
             <button class="pill hid" data-a="logs" id="navLogs" onclick="adminTab('logs')">📋 Riwayat Login</button>
           </div>
@@ -651,6 +653,26 @@ tbody tr:hover{background:var(--bg)}
             </div>
             <div class="dv"></div>
             <div class="fg"><label>Hapus Semua Data</label><div class="chs" style="margin-bottom:7px">Tidak bisa dibatalkan.</div><button class="btn btn-d" onclick="wipe()">🗑️ Hapus Semua Data</button></div>
+          </div>
+          <div id="a-feed" class="hid">
+            <div class="ch">
+              <div>
+                <span class="cht">⚡ Aktivitas &amp; Data Input Semua User</span>
+                <div class="chs">Pantau setiap transaksi &amp; input yang dimasukkan seluruh pengguna secara realtime</div>
+              </div>
+              <button class="btn btn-s btn-sm" onclick="loadAdminFeed()">🔄 Refresh Data</button>
+            </div>
+            <div class="filters" style="margin-top:12px">
+              <input type="text" id="feedSearch" placeholder="🔍 Cari transaksi / catatan..." oninput="renderAdminFeed()" style="flex:1;min-width:160px">
+              <select id="feedUserSelect" onchange="renderAdminFeed()"><option value="all">Semua Pengguna</option></select>
+              <select id="feedTypeSelect" onchange="renderAdminFeed()"><option value="all">Semua Tipe</option><option value="inc">Pemasukan</option><option value="exp">Pengeluaran</option></select>
+            </div>
+            <div id="feedSummaryBar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"></div>
+            <div class="tblwrap"><table>
+              <thead><tr><th>Waktu Input</th><th>Pengguna</th><th>Nama Transaksi</th><th>Kategori &amp; Dompet</th><th>Nominal</th><th>Aksi</th></tr></thead>
+              <tbody id="feedTableBody"></tbody>
+            </table></div>
+            <div class="chs" id="feedNote" style="margin-top:10px"></div>
           </div>
           <div id="a-usr" class="hid">
             <div class="ch"><span class="cht">👥 Manajemen User</span><button class="btn btn-s btn-sm" onclick="loadAdminUsers()">🔄 Refresh</button></div>
@@ -1260,15 +1282,19 @@ function walletOf(id){ for(var i=0;i<wps.length;i++){ if(wps[i].id===id) return 
 
 function txRow(t){
   var c=catOf(t.category);
-  var ic=c?c.icon:'📝';
+  var ic=t.categoryIcon || (c ? c.icon : '📝');
   var col=c?c.color:'#8e8e93';
-  var nm=c?c.name:'Tanpa kategori';
+  var nm=t.categoryName || (c ? c.name : 'Tanpa kategori');
   var w=walletOf(t.walletId);
+  var wName=t.walletName || (w ? w.name : '');
   var meta=nm+' · '+dShort(t.date)+' '+(t.time||'');
-  if(w) meta+=' · '+w.name;
+  if(wName && wName !== '-') meta+=' · '+wName;
+  if(t.username){
+    meta+=' · <span class="rbadge admin" style="font-size:9px;padding:1px 6px">@'+esc(t.username)+'</span>';
+  }
   return '<div class="ti">'+
     '<div class="tic" style="background:'+col+'22;color:'+col+'">'+esc(ic)+'</div>'+
-    '<div class="tif"><div class="tin">'+esc(t.name||'Transaksi')+'</div><div class="tim">'+esc(meta)+'</div></div>'+
+    '<div class="tif"><div class="tin">'+esc(t.name||'Transaksi')+'</div><div class="tim">'+meta+'</div></div>'+
     '<div class="tia '+(t.type==='inc'?'inc':'exp')+'">'+(t.type==='inc'?'+':'−')+rp(t.amount)+'</div>'+
     '<div class="tix"><button onclick="editTx(\''+t.id+'\')" title="Edit">✏️</button><button onclick="delTx(\''+t.id+'\')" title="Hapus">🗑️</button></div>'+
   '</div>';
@@ -1286,6 +1312,39 @@ function renderCatBreak(){
   }).join(''));
 }
 
+var adminAllTxCache = [];
+function onUserScopeChange(){
+  var scope = $('fUserScope') ? $('fUserScope').value : 'me';
+  if(scope === 'all'){
+    setHTML('allList', '<div class="empty"><span class="e">⏳</span>Memuat transaksi seluruh pengguna…</div>');
+    sb.rpc('admin_get_all_transactions', { p_limit: 500 }).then(function(r){
+      if(r.error){ toast('Gagal: ' + r.error.message, 'err'); return; }
+      adminAllTxCache = (r.data || []).map(function(t){
+        return {
+          id: t.id,
+          user_id: t.user_id,
+          username: t.username,
+          userName: t.user_name,
+          name: t.name,
+          type: t.type,
+          amount: Number(t.amount),
+          category: t.category,
+          categoryName: t.category_name,
+          categoryIcon: t.category_icon,
+          date: t.tx_date,
+          time: (t.tx_time || '00:00').slice(0, 5),
+          walletId: t.wallet_id,
+          walletName: t.wallet_name,
+          note: t.note || ''
+        };
+      });
+      renderTxPage();
+    }).catch(function(e){ toast('Error: ' + e.message, 'err'); });
+    return;
+  }
+  renderTxPage();
+}
+
 function renderTxPage(){
   var ft=$('fType')?$('fType').value:'all';
   var fc=$('fCat')?$('fCat').value:'all';
@@ -1301,7 +1360,10 @@ function renderTxPage(){
     fwEl.value=fw;
   }
 
-  var list=tx.filter(function(t){
+  var scope = ($('fUserScope') && !$('fUserScope').classList.contains('hid')) ? $('fUserScope').value : 'me';
+  var sourceList = (scope === 'all') ? adminAllTxCache : tx;
+
+  var list=sourceList.filter(function(t){
     if(ft!=='all' && t.type!==ft) return false;
     if(fc!=='all' && t.category!==fc) return false;
     if(fw!=='all' && t.walletId!==fw) return false;
@@ -1310,8 +1372,9 @@ function renderTxPage(){
       var n=(t.name||'').toLowerCase();
       var no=(t.note||'').toLowerCase();
       var c=catOf(t.category);
-      var cn=c?c.name.toLowerCase():'';
-      if(n.indexOf(q)===-1 && no.indexOf(q)===-1 && cn.indexOf(q)===-1) return false;
+      var cn=(t.categoryName || (c?c.name:'')).toLowerCase();
+      var un=(t.username || '').toLowerCase();
+      if(n.indexOf(q)===-1 && no.indexOf(q)===-1 && cn.indexOf(q)===-1 && un.indexOf(q)===-1) return false;
     }
     return true;
   }).sort(function(a,b){ return (b.date+b.time).localeCompare(a.date+a.time); });
@@ -2431,31 +2494,37 @@ function saveSettings(){
   toast('Settings disimpan ✓','ok');
 }
 function adminTab(t){
-  ['cat','theme','set','qa','bk','usr','logs'].forEach(function(k){
+  ['cat','theme','set','qa','bk','usr','feed','logs'].forEach(function(k){
     var el=$('a-'+k); if(el) el.classList.toggle('hid',k!==t);
   });
   document.querySelectorAll('.anav .pill').forEach(function(b){
     b.classList.toggle('on', b.getAttribute('data-a')===t);
   });
   if(t==='usr') loadAdminUsers();
+  if(t==='feed') loadAdminFeed();
   if(t==='logs') loadAdminLoginLogs();
 }
 
 /* ---------- ADMIN: MANAJEMEN USER ---------- */
 var isAdminUser = false;
 var admUsersCache = [];
+var admFeedCache = [];
 
 function checkAdmin(){
   if(mode!=='cloud' || !sb || !user || String(user.id).indexOf('local:')===0){
     isAdminUser = false;
     var nb=$('navUsr'); if(nb) nb.classList.add('hid');
+    var nf=$('navFeed'); if(nf) nf.classList.add('hid');
     var nl=$('navLogs'); if(nl) nl.classList.add('hid');
+    var us=$('fUserScope'); if(us) us.classList.add('hid');
     return;
   }
   sb.rpc('is_admin').then(function(r){
     isAdminUser = (r.data === true);
     var nb=$('navUsr'); if(nb) nb.classList.toggle('hid', !isAdminUser);
+    var nf=$('navFeed'); if(nf) nf.classList.toggle('hid', !isAdminUser);
     var nl=$('navLogs'); if(nl) nl.classList.toggle('hid', !isAdminUser);
+    var us=$('fUserScope'); if(us) us.classList.toggle('hid', !isAdminUser);
   }).catch(function(){ isAdminUser=false; });
 }
 
@@ -2559,43 +2628,236 @@ function admResetPw(id, uname){
 
 function admDetail(id){
   var u = admUsersCache.filter(function(x){ return x.id===id; })[0];
-  if(!u) return;
-  var du = cleanUname(u.email);
-  $('auTitle').textContent = u.name || du;
+  var du = u ? cleanUname(u.email) : id;
+  var uname = u ? (u.name || du) : 'User';
+
+  $('auTitle').textContent = uname;
   $('auSub').textContent = '@' + du;
-  $('auBody').innerHTML =
-    '<div class="aucard">'+
-      row('Username', '@' + du)+
-      row('Nama', u.name||'-')+
-      row('Role', u.role)+
-      row('Status', u.banned?'Dibanned':'Aktif')+
-      row('Terdaftar', (u.created_at||'').slice(0,10))+
-      row('Terakhir Aktif', u.last_active||'Belum ada data')+
-    '</div>'+
-    '<div class="aucard">'+
-      row('Jumlah Transaksi', u.tx_count)+
-      row('Total Pemasukan', rp(u.tx_income))+
-      row('Total Pengeluaran', rp(u.tx_expense))+
-      row('Selisih', rp(Number(u.tx_income)-Number(u.tx_expense)))+
-    '</div>'+
-    '<div class="aucard">'+
-      '<div class="ch"><span class="cht">Transaksi Terbaru</span></div>'+
-      '<div id="auTx" class="chs">Memuat…</div>'+
-    '</div>';
+  $('auBody').innerHTML = '<div class="empty"><span class="e">⏳</span>Mengambil seluruh data user ' + esc(uname) + '…</div>';
   go('admuser');
 
-  sb.from('transactions').select('*').eq('user_id',id).order('date',{ascending:false}).limit(30).then(function(r){
-    var el=$('auTx'); if(!el) return;
-    if(r.error){ el.textContent='Gagal ambil data: '+r.error.message; return; }
-    var rows=r.data||[];
-    if(!rows.length){ el.textContent='User ini belum mencatat transaksi.'; return; }
-    el.innerHTML='<div class="tblwrap"><table><thead><tr><th>Tanggal</th><th>Nama</th><th>Tipe</th><th>Jumlah</th></tr></thead><tbody>'+
-      rows.map(function(t){
-        return '<tr><td>'+esc(t.date)+'</td><td>'+esc(t.name)+'</td><td>'+(t.type==='inc'?'Masuk':'Keluar')+'</td><td>'+rp(t.amount)+'</td></tr>';
-      }).join('')+'</tbody></table></div>';
+  sb.rpc('admin_get_user_full_data', { p_target: id }).then(function(r){
+    if(r.error){
+      $('auBody').innerHTML = '<div class="card" style="color:var(--red);padding:18px">Gagal memuat data: ' + esc(r.error.message) + '</div>';
+      return;
+    }
+    var d = r.data || {};
+    var txs = d.transactions || [];
+    var wals = d.wallets || [];
+    var buds = d.budgets || [];
+    var frqsList = d.recurring || [];
+    var pfolio = d.portfolio || [];
+
+    var incTot = 0, expTot = 0;
+    txs.forEach(function(t){ if(t.type==='inc') incTot += Number(t.amount); else expTot += Number(t.amount); });
+
+    var html =
+      '<div class="aucard">'+
+        row('Username', '@' + du)+
+        row('Nama Lengkap', uname)+
+        row('Role Akun', (u ? u.role : 'user'))+
+        row('Status Akun', (u && u.banned) ? 'Dibanned' : 'Aktif')+
+        row('Terdaftar Sejak', (u && u.created_at) ? u.created_at.slice(0,10) : '-')+
+      '</div>'+
+      '<div class="aucard">'+
+        row('Total Transaksi', txs.length + ' input')+
+        row('Total Pemasukan', rp(incTot))+
+        row('Total Pengeluaran', rp(expTot))+
+        row('Net Saldo Kas', rp(incTot - expTot))+
+        row('Jumlah Dompet', wals.length + ' dompet')+
+        row('Jumlah Amplop', buds.length + ' amplop')+
+        row('Aset Investasi', pfolio.length + ' instrumen')+
+        row('Tagihan Berulang', frqsList.length + ' tagihan')+
+      '</div>';
+
+    // 1. Transaksi yang Di-input
+    html += '<div class="aucard">'+
+      '<div class="ch"><span class="cht">💸 Transaksi yang Di-input User (' + txs.length + ')</span></div>';
+    if(txs.length){
+      html += '<div class="tblwrap"><table><thead><tr><th>Waktu Input</th><th>Nama Transaksi</th><th>Kategori</th><th>Dompet</th><th>Jumlah</th><th>Catatan</th></tr></thead><tbody>'+
+        txs.map(function(t){
+          var isInc = t.type === 'inc';
+          return '<tr>'+
+            '<td>' + esc(t.date) + ' ' + esc((t.time||'').slice(0,5)) + '</td>'+
+            '<td><b>' + esc(t.name) + '</b></td>'+
+            '<td>' + esc(t.category_icon || '📝') + ' ' + esc(t.category_name || '-') + '</td>'+
+            '<td>' + esc(t.wallet_name || '-') + '</td>'+
+            '<td><span style="font-weight:700;color:' + (isInc ? 'var(--green)' : 'var(--red)') + '">' + (isInc?'+':'−') + rp(t.amount) + '</span></td>'+
+            '<td>' + esc(t.note || '-') + '</td>'+
+          '</tr>';
+        }).join('') +
+      '</tbody></table></div>';
+    } else {
+      html += '<div class="chs" style="padding:10px 0">User belum pernah mencatat transaksi.</div>';
+    }
+    html += '</div>';
+
+    // 2. Dompet & Rekening
+    html += '<div class="aucard">'+
+      '<div class="ch"><span class="cht">👛 Dompet &amp; Rekening (' + wals.length + ')</span></div>';
+    if(wals.length){
+      html += '<div class="tblwrap"><table><thead><tr><th>Dompet</th><th>Tipe</th><th>Saldo Awal</th></tr></thead><tbody>'+
+        wals.map(function(w){
+          return '<tr><td><b>' + esc(w.icon||'🏦') + ' ' + esc(w.name) + '</b></td><td>' + esc(w.type) + '</td><td>' + rp(w.balance) + '</td></tr>';
+        }).join('') +
+      '</tbody></table></div>';
+    } else {
+      html += '<div class="chs" style="padding:10px 0">User belum membuat dompet khusus.</div>';
+    }
+    html += '</div>';
+
+    // 3. Amplop & Budget
+    html += '<div class="aucard">'+
+      '<div class="ch"><span class="cht">🎒 Amplop Budget (' + buds.length + ')</span></div>';
+    if(buds.length){
+      html += '<div class="tblwrap"><table><thead><tr><th>Nama Amplop</th><th>Budget Bulanan</th></tr></thead><tbody>'+
+        buds.map(function(b){
+          return '<tr><td><b>' + esc(b.icon||'🎒') + ' ' + esc(b.name) + '</b></td><td>' + rp(b.amount) + '</td></tr>';
+        }).join('') +
+      '</tbody></table></div>';
+    } else {
+      html += '<div class="chs" style="padding:10px 0">User belum mengatur amplop budget.</div>';
+    }
+    html += '</div>';
+
+    // 4. Portofolio Investasi
+    if(pfolio.length){
+      html += '<div class="aucard">'+
+        '<div class="ch"><span class="cht">📈 Portofolio Investasi (' + pfolio.length + ')</span></div>'+
+        '<div class="tblwrap"><table><thead><tr><th>Aset</th><th>Jenis</th><th>Modal Pokok</th><th>Nilai Sekarang</th></tr></thead><tbody>'+
+          pfolio.map(function(p){
+            return '<tr><td><b>' + esc(p.name) + ' (' + esc(p.symbol||'-') + ')</b></td><td>' + esc(p.type) + '</td><td>' + rp(p.capital) + '</td><td>' + rp(p.current_value) + '</td></tr>';
+          }).join('') +
+        '</tbody></table></div></div>';
+    }
+
+    // 5. Tagihan Berulang
+    if(frqsList.length){
+      html += '<div class="aucard">'+
+        '<div class="ch"><span class="cht">📅 Tagihan Berulang (' + frqsList.length + ')</span></div>'+
+        '<div class="tblwrap"><table><thead><tr><th>Tagihan</th><th>Frekuensi</th><th>Tanggal Jatuh Tempo</th><th>Nominal</th></tr></thead><tbody>'+
+          frqsList.map(function(f){
+            var freqStr = f.freq === 'monthly' ? 'Bulanan' : (f.freq === 'weekly' ? 'Mingguan' : 'Tahunan');
+            return '<tr><td><b>' + esc(f.icon||'📅') + ' ' + esc(f.name) + '</b></td><td>' + esc(freqStr) + '</td><td>Tgl ' + esc(String(f.day||1)) + '</td><td>' + rp(f.amount) + '</td></tr>';
+          }).join('') +
+        '</tbody></table></div></div>';
+    }
+
+    $('auBody').innerHTML = html;
+  }).catch(function(e){
+    $('auBody').innerHTML = '<div class="card" style="color:var(--red);padding:18px">Gagal memuat: ' + esc(e.message) + '</div>';
   });
 }
 function row(k,v){ return '<div class="aurow"><span class="k">'+esc(k)+'</span><span class="v">'+esc(String(v==null?'-':v))+'</span></div>'; }
+
+/* ---------- ADMIN: FEED AKTIVITAS SEMUA USER ---------- */
+function loadAdminFeed(){
+  var body = $('feedTableBody');
+  if(!body) return;
+  if(!isAdminUser){
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:20px">Akun ini bukan admin.</td></tr>';
+    return;
+  }
+  body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:20px">Memuat data aktivitas & input user…</td></tr>';
+
+  sb.rpc('admin_get_all_transactions', { p_limit: 300 }).then(function(r){
+    if(r.error){
+      body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--red);padding:20px">'+esc(r.error.message)+'</td></tr>';
+      return;
+    }
+    admFeedCache = r.data || [];
+    updateFeedUserSelect();
+    renderAdminFeed();
+  }).catch(function(e){
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--red);padding:20px">Gagal memuat feed: '+esc(e.message)+'</td></tr>';
+  });
+}
+
+function updateFeedUserSelect(){
+  var sel = $('feedUserSelect');
+  if(!sel) return;
+  var cur = sel.value;
+  var map = {};
+  admFeedCache.forEach(function(t){
+    if(t.user_id && !map[t.user_id]){
+      map[t.user_id] = '@' + cleanUname(t.username || t.email) + (t.user_name ? (' (' + t.user_name + ')') : '');
+    }
+  });
+  var opts = '<option value="all">Semua Pengguna</option>' + Object.keys(map).map(function(uid){
+    return '<option value="'+uid+'">'+esc(map[uid])+'</option>';
+  }).join('');
+  sel.innerHTML = opts;
+  if(map[cur]) sel.value = cur;
+}
+
+function renderAdminFeed(){
+  var body = $('feedTableBody');
+  if(!body) return;
+
+  var uFilter = $('feedUserSelect') ? $('feedUserSelect').value : 'all';
+  var tFilter = $('feedTypeSelect') ? $('feedTypeSelect').value : 'all';
+  var q = $('feedSearch') ? $('feedSearch').value.trim().toLowerCase() : '';
+
+  var list = admFeedCache.filter(function(t){
+    if(uFilter !== 'all' && t.user_id !== uFilter) return false;
+    if(tFilter !== 'all' && t.type !== tFilter) return false;
+    if(q){
+      var n = (t.name||'').toLowerCase();
+      var no = (t.note||'').toLowerCase();
+      var cn = (t.category_name||'').toLowerCase();
+      var un = (t.username||'').toLowerCase();
+      var unm = (t.user_name||'').toLowerCase();
+      if(n.indexOf(q)===-1 && no.indexOf(q)===-1 && cn.indexOf(q)===-1 && un.indexOf(q)===-1 && unm.indexOf(q)===-1) return false;
+    }
+    return true;
+  });
+
+  var sumInc = 0, sumExp = 0;
+  list.forEach(function(t){
+    if(t.type === 'inc') sumInc += Number(t.amount);
+    else sumExp += Number(t.amount);
+  });
+  var net = sumInc - sumExp;
+
+  var sbEl = $('feedSummaryBar');
+  if(sbEl){
+    sbEl.innerHTML =
+      '<div class="summary-chip">Total Input: <b>' + list.length + ' transaksi</b></div>' +
+      '<div class="summary-chip inc">Pemasukan: <b>+' + rp(sumInc) + '</b></div>' +
+      '<div class="summary-chip exp">Pengeluaran: <b>−' + rp(sumExp) + '</b></div>' +
+      '<div class="summary-chip">Net: <b style="color:'+(net>=0?'var(--green)':'var(--red)')+'">' + (net>=0?'+':'') + rp(net) + '</b></div>';
+  }
+
+  if(!list.length){
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:24px">Tidak ada input data yang sesuai filter.</td></tr>';
+    if($('feedNote')) $('feedNote').textContent = '';
+    return;
+  }
+
+  body.innerHTML = list.map(function(t){
+    var d = new Date(t.created_at);
+    var timeStr = isNaN(d.getTime()) ? (t.tx_date + ' ' + (t.tx_time||'')) : (dShort(t.tx_date) + ' ' + (t.tx_time||''));
+    var rel = formatRelativeTime(t.created_at);
+    var uname = cleanUname(t.username || t.email);
+    var isInc = t.type === 'inc';
+    var amtStr = (isInc ? '+' : '−') + rp(t.amount);
+    var col = isInc ? 'var(--green)' : 'var(--red)';
+
+    return '<tr>'+
+      '<td><div style="font-weight:600">' + esc(timeStr) + '</div><div class="chs">' + esc(rel) + '</div></td>'+
+      '<td><div style="font-weight:600">' + esc(t.user_name || uname) + '</div><div class="chs">@' + esc(uname) + '</div></td>'+
+      '<td><div style="font-weight:600">' + esc(t.name) + '</div>' + (t.note ? ('<div class="chs">' + esc(t.note) + '</div>') : '') + '</td>'+
+      '<td><div>' + esc(t.category_icon || '📝') + ' ' + esc(t.category_name || '-') + '</div><div class="chs">Dompet: ' + esc(t.wallet_name || '-') + '</div></td>'+
+      '<td><span style="font-weight:700;color:' + col + '">' + esc(amtStr) + '</span></td>'+
+      '<td><div class="acts">'+
+        '<button class="btn btn-s btn-sm" onclick="admDetail(\'' + t.user_id + '\')">👁️ User</button>'+
+        '<button class="btn btn-d btn-sm" onclick="delTx(\'' + t.id + '\')">🗑️</button>'+
+      '</div></td>'+
+    '</tr>';
+  }).join('');
+
+  if($('feedNote')) $('feedNote').textContent = 'Menampilkan ' + list.length + ' dari ' + admFeedCache.length + ' transaksi input pengguna.';
+}
 
 /* ---------- ADMIN: RIWAYAT LOGIN ---------- */
 function parseDevice(ua){
