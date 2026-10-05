@@ -187,6 +187,15 @@ tbody tr:hover{background:var(--bg)}
 .topt{border:2px solid var(--border);border-radius:var(--rs);padding:10px;cursor:pointer;text-align:center}
 .topt.on{border-color:var(--accent)}
 .tswatch{height:44px;border-radius:6px;margin-bottom:6px}
+.amt-prev{font-size:11px;color:var(--accent);margin-top:4px;font-weight:600;display:none}
+.tx-date-head{display:flex;justify-content:space-between;align-items:center;background:var(--bg);padding:7px 11px;border-radius:var(--rs);margin:14px 0 6px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;border:1px solid var(--border)}
+.tx-date-head .tot-inc{color:var(--green);margin-left:6px;font-weight:700}
+.tx-date-head .tot-exp{color:var(--red);margin-left:6px;font-weight:700}
+.summary-chip{display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 9px;font-size:11px}
+.summary-chip b{color:var(--text)}
+.summary-chip.inc b{color:var(--green)}
+.summary-chip.exp b{color:var(--red)}
+.badge.transfer{background:var(--accent2);color:var(--accent)}
 .dv{height:1px;background:var(--border);margin:14px 0}
 .toasts{position:fixed;bottom:14px;right:14px;z-index:9999;display:flex;flex-direction:column;gap:6px;max-width:calc(100vw - 28px)}
 .toast{padding:10px 15px;border-radius:var(--rs);background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow);font-size:12px;animation:sl .25s ease}
@@ -258,6 +267,7 @@ tbody tr:hover{background:var(--bg)}
       <a data-p="frq" onclick="go('frq')">📅 Berulang</a>
       <a data-p="wp" onclick="go('wp')">👛 Dompet</a>
       <a data-p="pf" onclick="go('pf')">📈 Investasi</a>
+      <a data-p="calc" onclick="go('calc')">🧮 Freedom</a>
       <a data-p="rep" onclick="go('rep')">📋 Laporan</a>
       <a data-p="admin" onclick="go('admin')">⚙️ Admin</a>
     </nav>
@@ -278,8 +288,14 @@ tbody tr:hover{background:var(--bg)}
       <div class="grid4">
         <div class="stat inc"><div class="l">Pemasukan</div><div class="v" id="sInc">Rp 0</div><div class="s">Bulan ini</div></div>
         <div class="stat exp"><div class="l">Pengeluaran</div><div class="v" id="sExp">Rp 0</div><div class="s">Bulan ini</div></div>
-        <div class="stat bal"><div class="l">Saldo</div><div class="v" id="sBal">Rp 0</div><div class="s">Semua waktu</div></div>
-        <div class="stat"><div class="l">Transaksi</div><div class="v" id="sCnt">0</div><div class="s">Semua waktu</div></div>
+        <div class="stat bal"><div class="l">Saldo Bersih</div><div class="v" id="sBal">Rp 0</div><div class="s">Bulan ini</div></div>
+        <div class="stat"><div class="l">Total Kas Dompet</div><div class="v" id="sKas" style="color:var(--accent)">Rp 0</div><div class="s">Semua dompet</div></div>
+      </div>
+      <div class="grid4" style="margin-top:-6px;margin-bottom:12px">
+        <div class="stat"><div class="l">Kekayaan Bersih</div><div class="v" id="sNetWorth">Rp 0</div><div class="s">Kas + Investasi</div></div>
+        <div class="stat"><div class="l">Rata-rata Harian</div><div class="v" id="sDailyBurn">Rp 0</div><div class="s" id="sDailySub">Pengeluaran/hari</div></div>
+        <div class="stat"><div class="l">Proyeksi Akhir Bulan</div><div class="v" id="sProjected">Rp 0</div><div class="s">Estimasi pengeluaran</div></div>
+        <div class="stat"><div class="l">Total Transaksi</div><div class="v" id="sCnt">0</div><div class="s">Semua waktu</div></div>
       </div>
       <div class="card">
         <div class="ch"><span class="cht">Catat Cepat</span><span class="chs">Pilih jumlah → kategori → simpan</span></div>
@@ -287,7 +303,8 @@ tbody tr:hover{background:var(--bg)}
           <button class="pill exp on" id="qExp" onclick="setQType('exp')">Pengeluaran</button>
           <button class="pill inc" id="qInc" onclick="setQType('inc')">Pemasukan</button>
         </div>
-        <div class="amt"><span class="c" id="qSym">Rp</span><input type="number" id="qAmt" placeholder="0" min="0" step="1000" inputmode="numeric"></div>
+        <div class="amt"><span class="c" id="qSym">Rp</span><input type="number" id="qAmt" placeholder="0" min="0" step="1000" inputmode="numeric" oninput="updateAmtPreview(this,'qAmt_prev')"></div>
+        <div class="amt-prev" id="qAmt_prev"></div>
         <div class="pills" style="margin-top:8px" id="qQuick"></div>
         <div style="margin-top:11px">
           <label style="font-size:12px;color:var(--text2);font-weight:500;display:block;margin-bottom:5px">Kategori</label>
@@ -311,15 +328,21 @@ tbody tr:hover{background:var(--bg)}
     <div class="page" id="p-tx">
       <div class="phead">
         <div><h2>Transaksi</h2><p class="sub">Semua pemasukan &amp; pengeluaran</p></div>
-        <button class="btn btn-p" onclick="openTx()">+ Catat Baru</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-s" onclick="openTransfer()">⇄ Transfer</button>
+          <button class="btn btn-p" onclick="openTx()">+ Catat Baru</button>
+        </div>
       </div>
       <div class="card">
         <div class="filters">
+          <input type="text" id="fSearch" placeholder="🔍 Cari nama / catatan..." oninput="renderTxPage()" style="flex:1;min-width:160px">
           <select id="fType" onchange="renderTxPage()"><option value="all">Semua Tipe</option><option value="inc">Pemasukan</option><option value="exp">Pengeluaran</option></select>
           <select id="fCat" onchange="renderTxPage()"><option value="all">Semua Kategori</option></select>
+          <select id="fWallet" onchange="renderTxPage()"><option value="all">Semua Dompet</option></select>
           <input type="date" id="fDate" onchange="renderTxPage()">
           <button class="btn btn-s btn-sm" onclick="resetFilters()">Reset</button>
         </div>
+        <div id="txSummaryBar" style="margin-top:10px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-top:8px;border-top:1px solid var(--border)"></div>
       </div>
       <div class="card"><div id="allList"></div></div>
     </div>
@@ -365,7 +388,10 @@ tbody tr:hover{background:var(--bg)}
     <div class="page" id="p-wp">
       <div class="phead">
         <div><h2>Dompet</h2><p class="sub">Semua dompet dalam satu layar</p></div>
-        <button class="btn btn-p" onclick="openWp()">+ Tambah Dompet</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-s" onclick="openTransfer()">⇄ Transfer Saldo</button>
+          <button class="btn btn-p" onclick="openWp()">+ Tambah Dompet</button>
+        </div>
       </div>
       <div class="pills" id="wpTabs" style="margin-bottom:12px"></div>
       <div class="wgrid" id="wpList"></div>
@@ -385,6 +411,157 @@ tbody tr:hover{background:var(--bg)}
       </div>
       <div class="card"><div class="ch"><span class="cht">Alokasi</span></div><div id="pfAlloc"></div></div>
       <div class="card"><div class="ch"><span class="cht">Aset</span><span class="chs">Mark to market</span></div><div id="pfList"></div></div>
+    </div>
+
+    <!-- FINANCIAL CALCULATOR: AMAN & FREEDOM -->
+    <div class="page" id="p-calc">
+      <div class="phead">
+        <div>
+          <h2>Kalkulator Finansial</h2>
+          <p class="sub">Simulasi Dana Darurat (Aman) &amp; Financial Freedom (FIRE)</p>
+        </div>
+        <button class="btn btn-s btn-sm" onclick="syncCalcWithRealData()">⚡ Isi Otomatis dari Data Saya</button>
+      </div>
+
+      <!-- TABS -->
+      <div class="pills" style="margin-bottom:14px">
+        <button class="pill on" id="tabCalcAman" onclick="switchCalcTab('aman')">🛡️ Financial Aman (Dana Darurat)</button>
+        <button class="pill" id="tabCalcFreedom" onclick="switchCalcTab('freedom')">🚀 Financial Freedom (FIRE)</button>
+      </div>
+
+      <!-- PANEL AMAN (DANA DARURAT) -->
+      <div id="calcPaneAman">
+        <div class="grid2">
+          <div class="card">
+            <div class="ch"><span class="cht">Parameter Pengeluaran &amp; Profil</span></div>
+            <div class="fg">
+              <label>Pengeluaran Rutin per Bulan</label>
+              <div class="amt"><span class="c">Rp</span><input type="number" id="cAmanExp" placeholder="0" step="100000" inputmode="numeric" oninput="runCalcAman();updateAmtPreview(this,'cAmanExp_prev')"></div>
+              <div class="amt-prev" id="cAmanExp_prev"></div>
+            </div>
+            <div class="fg">
+              <label>Status Profil Kebutuhan</label>
+              <select id="cAmanProfile" onchange="onAmanProfileChange()">
+                <option value="3">Lajang / Pekerja Tetap (3 Bulan)</option>
+                <option value="6" selected>Lajang Waspada / Menikah (6 Bulan)</option>
+                <option value="9">Menikah 1 Anak (9 Bulan)</option>
+                <option value="12">Keluarga 2+ Anak / Freelancer / Pengusaha (12 Bulan)</option>
+                <option value="custom">Kustom Target Jumlah Bulan</option>
+              </select>
+            </div>
+            <div class="fg hid" id="cAmanCustomWrap">
+              <label>Target Berapa Bulan?</label>
+              <input type="number" id="cAmanMonths" min="1" max="60" value="6" oninput="runCalcAman()">
+            </div>
+            <div class="fg">
+              <label>Dana Terkumpul Saat Ini (Kas/Tabungan)</label>
+              <div class="amt"><span class="c">Rp</span><input type="number" id="cAmanCur" placeholder="0" step="100000" inputmode="numeric" oninput="runCalcAman();updateAmtPreview(this,'cAmanCur_prev')"></div>
+              <div class="amt-prev" id="cAmanCur_prev"></div>
+            </div>
+            <div class="fg">
+              <label>Rencana Menabung / Menyisihkan per Bulan</label>
+              <div class="amt"><span class="c">Rp</span><input type="number" id="cAmanSave" placeholder="0" step="50000" inputmode="numeric" oninput="runCalcAman();updateAmtPreview(this,'cAmanSave_prev')"></div>
+              <div class="amt-prev" id="cAmanSave_prev"></div>
+            </div>
+          </div>
+
+          <div class="card" style="display:flex;flex-direction:column;justify-content:space-between">
+            <div>
+              <div class="ch"><span class="cht">Hasil Analisis Dana Aman</span></div>
+              <div class="stat bal" style="margin-bottom:12px;text-align:center;padding:16px">
+                <div class="l">Target Dana Darurat</div>
+                <div class="v" id="cAmanTarget" style="font-size:24px;color:var(--accent)">Rp 0</div>
+                <div class="s" id="cAmanTargetSub">Untuk bertahan 6 bulan</div>
+              </div>
+
+              <div style="margin-bottom:14px">
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+                  <span>Progres Terkumpul</span>
+                  <b id="cAmanPct">0%</b>
+                </div>
+                <div class="bar" style="margin:0;height:10px"><div id="cAmanBar" style="width:0%;background:var(--green)"></div></div>
+              </div>
+
+              <div class="aucard" style="margin-bottom:0">
+                <div class="aurow"><span class="k">Kekurangan Dana</span><span class="v" id="cAmanGap">Rp 0</span></div>
+                <div class="aurow"><span class="k">Ketahanan Saat Ini</span><span class="v" id="cAmanRunway">0 Bulan</span></div>
+                <div class="aurow"><span class="k">Waktu Capai Target</span><span class="v" id="cAmanTimeToTarget">Segera</span></div>
+                <div class="aurow"><span class="k">Status Keamanan</span><span class="v" id="cAmanStatusBadge">Perlu Menabung</span></div>
+              </div>
+            </div>
+            <div class="chs" style="margin-top:10px;font-size:11px;line-height:1.5;background:var(--bg);padding:8px 10px;border-radius:var(--rs);border:1px solid var(--border)">
+              💡 <b>Tips Dana Aman:</b> Simpan dana darurat di instrumen likuid dan bebas risiko seperti Tabungan Bank, Deposito, atau Reksadana Pasar Uang (RDPU).
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL FREEDOM (FIRE) -->
+      <div id="calcPaneFreedom" class="hid">
+        <div class="grid2">
+          <div class="card">
+            <div class="ch"><span class="cht">Kebutuhan Hidup &amp; Investasi</span></div>
+            <div class="fg">
+              <label>Target Pengeluaran Hidup Bulanan saat Bebas</label>
+              <div class="amt"><span class="c">Rp</span><input type="number" id="cFireExpM" placeholder="0" step="500000" inputmode="numeric" oninput="runCalcFire();updateAmtPreview(this,'cFireExpM_prev')"></div>
+              <div class="amt-prev" id="cFireExpM_prev"></div>
+            </div>
+            <div class="fg">
+              <label>Safe Withdrawal Rate (Aturan Penarikan Tahunan)</label>
+              <select id="cFireSwr" onchange="runCalcFire()">
+                <option value="0.04" selected>4% per tahun (Aturan 25x Pengeluaran - Standar FIRE)</option>
+                <option value="0.035">3.5% per tahun (Lebih Konservatif / Aman)</option>
+                <option value="0.03">3% per tahun (Ultra Aman - Generational Wealth)</option>
+                <option value="0.05">5% per tahun (Agresif)</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Total Aset / Modal Investasi Saat Ini</label>
+              <div class="amt"><span class="c">Rp</span><input type="number" id="cFireCur" placeholder="0" step="1000000" inputmode="numeric" oninput="runCalcFire();updateAmtPreview(this,'cFireCur_prev')"></div>
+              <div class="amt-prev" id="cFireCur_prev"></div>
+            </div>
+            <div class="fg">
+              <label>Investasi Rutin per Bulan</label>
+              <div class="amt"><span class="c">Rp</span><input type="number" id="cFireMonthly" placeholder="0" step="500000" inputmode="numeric" oninput="runCalcFire();updateAmtPreview(this,'cFireMonthly_prev')"></div>
+              <div class="amt-prev" id="cFireMonthly_prev"></div>
+            </div>
+            <div class="fg">
+              <label>Estimasi Return Investasi Tahunan (%)</label>
+              <input type="number" id="cFireReturn" min="1" max="30" step="0.5" value="8" oninput="runCalcFire()">
+              <div class="chs" style="margin-top:3px">Contoh: Reksadana/Obligasi ~6-8%, Saham/Indeks ~10-12%</div>
+            </div>
+          </div>
+
+          <div class="card" style="display:flex;flex-direction:column;justify-content:space-between">
+            <div>
+              <div class="ch"><span class="cht">Target Angka Financial Freedom (FIRE)</span></div>
+              <div class="stat inc" style="margin-bottom:12px;text-align:center;padding:16px">
+                <div class="l">Target Bebas Finansial (FIRE Number)</div>
+                <div class="v" id="cFireTarget" style="font-size:24px;color:var(--green)">Rp 0</div>
+                <div class="s" id="cFireTargetSub">Modal pokok yang dibutuhkan</div>
+              </div>
+
+              <div style="margin-bottom:14px">
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+                  <span>Progres Menuju Financial Freedom</span>
+                  <b id="cFirePct">0%</b>
+                </div>
+                <div class="bar" style="margin:0;height:10px"><div id="cFireBar" style="width:0%;background:var(--accent)"></div></div>
+              </div>
+
+              <div class="aucard" style="margin-bottom:0">
+                <div class="aurow"><span class="k">Passive Income Bulanan Aman</span><span class="v" id="cFireMonthlyPassive" style="color:var(--green)">Rp 0 / bln</span></div>
+                <div class="aurow"><span class="k">Estimasi Waktu Capai Freedom</span><span class="v" id="cFireYears">0 Tahun</span></div>
+                <div class="aurow"><span class="k">Kekurangan Modal Pokok</span><span class="v" id="cFireGap">Rp 0</span></div>
+                <div class="aurow"><span class="k">Hasil Dividen/Bunga per Tahun</span><span class="v" id="cFireAnnualPassive">Rp 0 / thn</span></div>
+              </div>
+            </div>
+            <div class="chs" style="margin-top:10px;font-size:11px;line-height:1.5;background:var(--bg);padding:8px 10px;border-radius:var(--rs);border:1px solid var(--border)">
+              🚀 <b>Konsep Financial Freedom (FIRE):</b> Dengan mencapai angka target ini, modal pokok tidak akan berkurang karena Anda hanya mengambil imbal hasil (4%/tahun) untuk membiayai seluruh gaya hidup selamanya tanpa wajib bekerja lagi!
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- REPORTS -->
@@ -525,7 +702,7 @@ tbody tr:hover{background:var(--bg)}
   <div class="mh"><span class="mt" id="mTxT">Catat Transaksi</span><button class="mc" onclick="closeM('mTx')">✕</button></div>
   <div class="fg"><label>Nama Transaksi</label><input type="text" id="txN" placeholder="Misal: Makan siang, Gaji"></div>
   <div class="fg"><label>Tipe</label><div class="pills"><button class="pill exp" id="txExp" onclick="setTxType('exp')">Pengeluaran</button><button class="pill inc" id="txInc" onclick="setTxType('inc')">Pemasukan</button></div></div>
-  <div class="fg"><label>Jumlah</label><div class="amt"><span class="c" id="txSym">Rp</span><input type="number" id="txA" placeholder="0" min="0" step="1000" inputmode="numeric"></div></div>
+  <div class="fg"><label>Jumlah</label><div class="amt"><span class="c" id="txSym">Rp</span><input type="number" id="txA" placeholder="0" min="0" step="1000" inputmode="numeric" oninput="updateAmtPreview(this,'txA_prev')"></div><div class="amt-prev" id="txA_prev"></div></div>
   <div class="fg"><label>Kategori</label><div class="cats" id="txCats"></div></div>
   <div class="fg"><label>Tanggal</label><input type="date" id="txD"></div>
   <div class="fg"><label>Dompet</label><select id="txW"><option value="">Tanpa dompet</option></select></div>
@@ -538,7 +715,7 @@ tbody tr:hover{background:var(--bg)}
   <div class="fg"><label>Nama Amplop</label><input type="text" id="ampN" placeholder="Misal: Makan"></div>
   <div class="fg"><label>Icon</label><input type="text" id="ampI" placeholder="🎒" maxlength="4"></div>
   <div class="fg"><label>Kategori (untuk hitung otomatis)</label><select id="ampC"><option value="">Tidak terhubung kategori</option></select></div>
-  <div class="fg"><label>Budget Bulanan</label><div class="amt"><span class="c" id="ampSym">Rp</span><input type="number" id="ampA" placeholder="0" min="0" step="1000" inputmode="numeric"></div></div>
+  <div class="fg"><label>Budget Bulanan</label><div class="amt"><span class="c" id="ampSym">Rp</span><input type="number" id="ampA" placeholder="0" min="0" step="1000" inputmode="numeric" oninput="updateAmtPreview(this,'ampA_prev')"></div><div class="amt-prev" id="ampA_prev"></div></div>
   <div class="mf"><button class="btn btn-s" onclick="closeM('mAmp')">Batal</button><button class="btn btn-p" onclick="saveAmp()">Simpan ✓</button></div>
 </div></div>
 
@@ -546,7 +723,7 @@ tbody tr:hover{background:var(--bg)}
   <div class="mh"><span class="mt" id="mFrqT">Tambah Tagihan Berulang</span><button class="mc" onclick="closeM('mFrq')">✕</button></div>
   <div class="fg"><label>Nama Tagihan</label><input type="text" id="frqN" placeholder="Misal: Bayar Kos, Spotify"></div>
   <div class="fg"><label>Icon</label><input type="text" id="frqI" placeholder="📅" maxlength="4"></div>
-  <div class="fg"><label>Jumlah</label><div class="amt"><span class="c" id="frqSym">Rp</span><input type="number" id="frqA" placeholder="0" min="0" step="1000" inputmode="numeric"></div></div>
+  <div class="fg"><label>Jumlah</label><div class="amt"><span class="c" id="frqSym">Rp</span><input type="number" id="frqA" placeholder="0" min="0" step="1000" inputmode="numeric" oninput="updateAmtPreview(this,'frqA_prev')"></div><div class="amt-prev" id="frqA_prev"></div></div>
   <div class="fg"><label>Kategori</label><select id="frqC"><option value="">Pilih kategori</option></select></div>
   <div class="fg"><label>Frekuensi</label><div class="pills"><button class="pill" id="frqW1" onclick="setFrq('weekly')">Mingguan</button><button class="pill on" id="frqM1" onclick="setFrq('monthly')">Bulanan</button><button class="pill" id="frqY1" onclick="setFrq('yearly')">Tahunan</button></div></div>
   <div class="fg" id="frqDayWrap"><label>Tanggal jatuh tempo (1–28)</label><input type="number" id="frqD" min="1" max="28" value="1"></div>
@@ -558,8 +735,19 @@ tbody tr:hover{background:var(--bg)}
   <div class="fg"><label>Nama Dompet</label><input type="text" id="wpN" placeholder="Misal: BCA, GoPay, Tunai"></div>
   <div class="fg"><label>Tipe</label><div class="pills"><button class="pill on" id="wpBank" onclick="setWpType('bank')">Bank</button><button class="pill" id="wpEw" onclick="setWpType('ewallet')">E-Wallet</button><button class="pill" id="wpCash" onclick="setWpType('tunai')">Tunai</button><button class="pill" id="wpCard" onclick="setWpType('kartu')">Kartu</button></div></div>
   <div class="fg"><label>Icon</label><input type="text" id="wpI" placeholder="🏦" maxlength="4"></div>
-  <div class="fg"><label>Saldo Awal</label><div class="amt"><span class="c" id="wpSym">Rp</span><input type="number" id="wpA" placeholder="0" min="0" step="1000" inputmode="numeric"></div></div>
+  <div class="fg"><label>Saldo Awal</label><div class="amt"><span class="c" id="wpSym">Rp</span><input type="number" id="wpA" placeholder="0" min="0" step="1000" inputmode="numeric" oninput="updateAmtPreview(this,'wpA_prev')"></div><div class="amt-prev" id="wpA_prev"></div></div>
   <div class="mf"><button class="btn btn-s" onclick="closeM('mWp')">Batal</button><button class="btn btn-p" onclick="saveWp()">Simpan ✓</button></div>
+</div></div>
+
+<div class="mz" id="mTransfer"><div class="modal">
+  <div class="mh"><span class="mt">⇄ Transfer Antar Dompet</span><button class="mc" onclick="closeM('mTransfer')">✕</button></div>
+  <div class="fg"><label>Dari Dompet (Asal / Sumber Saldo)</label><select id="tfFrom" onchange="renderTransferBalances()"></select><div class="chs" id="tfFromBal" style="margin-top:3px"></div></div>
+  <div class="fg"><label>Ke Dompet (Tujuan)</label><select id="tfTo" onchange="renderTransferBalances()"></select><div class="chs" id="tfToBal" style="margin-top:3px"></div></div>
+  <div class="fg"><label>Jumlah Transfer</label><div class="amt"><span class="c">Rp</span><input type="number" id="tfA" placeholder="0" min="0" step="1000" inputmode="numeric" oninput="updateAmtPreview(this,'tfA_prev')"></div><div class="amt-prev" id="tfA_prev"></div></div>
+  <div class="fg"><label>Biaya Admin (Opsional, dibebankan ke dompet asal)</label><div class="amt"><span class="c">Rp</span><input type="number" id="tfFee" placeholder="0" min="0" step="500" inputmode="numeric" oninput="updateAmtPreview(this,'tfFee_prev')"></div><div class="amt-prev" id="tfFee_prev"></div></div>
+  <div class="fg"><label>Tanggal</label><input type="date" id="tfD"></div>
+  <div class="fg"><label>Catatan (Opsional)</label><input type="text" id="tfNote" placeholder="Misal: Tarik tunai, Top-up GoPay"></div>
+  <div class="mf"><button class="btn btn-s" onclick="closeM('mTransfer')">Batal</button><button class="btn btn-p" onclick="saveTransfer()">Kirim Transfer ✓</button></div>
 </div></div>
 
 <div class="mz" id="mPf"><div class="modal">
@@ -567,8 +755,8 @@ tbody tr:hover{background:var(--bg)}
   <div class="fg"><label>Nama Aset</label><input type="text" id="pfN" placeholder="Misal: BBCA, Bitcoin, Emas"></div>
   <div class="fg"><label>Kode / Ticker</label><input type="text" id="pfS" placeholder="Misal: BBCA, BTC"></div>
   <div class="fg"><label>Jenis</label><div class="pills"><button class="pill on" id="pfStock" onclick="setPfType('saham')">Saham</button><button class="pill" id="pfCrypto" onclick="setPfType('crypto')">Crypto</button><button class="pill" id="pfGold" onclick="setPfType('emas')">Emas</button><button class="pill" id="pfFund" onclick="setPfType('reksa')">Reksadana</button></div></div>
-  <div class="fg"><label>Modal</label><div class="amt"><span class="c" id="pfSym1">Rp</span><input type="number" id="pfCap" placeholder="0" min="0" step="1000" inputmode="numeric"></div></div>
-  <div class="fg"><label>Nilai Sekarang</label><div class="amt"><span class="c" id="pfSym2">Rp</span><input type="number" id="pfVal" placeholder="0" min="0" step="1000" inputmode="numeric"></div></div>
+  <div class="fg"><label>Modal</label><div class="amt"><span class="c" id="pfSym1">Rp</span><input type="number" id="pfCap" placeholder="0" min="0" step="1000" inputmode="numeric" oninput="updateAmtPreview(this,'pfCap_prev')"></div><div class="amt-prev" id="pfCap_prev"></div></div>
+  <div class="fg"><label>Nilai Sekarang</label><div class="amt"><span class="c" id="pfSym2">Rp</span><input type="number" id="pfVal" placeholder="0" min="0" step="1000" inputmode="numeric" oninput="updateAmtPreview(this,'pfVal_prev')"></div><div class="amt-prev" id="pfVal_prev"></div></div>
   <div class="mf"><button class="btn btn-s" onclick="closeM('mPf')">Batal</button><button class="btn btn-p" onclick="savePf()">Simpan ✓</button></div>
 </div></div>
 
@@ -616,7 +804,8 @@ var DEFAULT_CATS = [
   {id:'c5',name:'Tagihan',icon:'🧾',type:'exp',color:'#5856d6'},
   {id:'c6',name:'Gaji',icon:'💰',type:'inc',color:'#34c759'},
   {id:'c7',name:'Bonus',icon:'🎁',type:'inc',color:'#5ac8fa'},
-  {id:'c8',name:'Lain',icon:'📦',type:'both',color:'#8e8e93'}
+  {id:'c8',name:'Transfer',icon:'⇄',type:'both',color:'#5856d6'},
+  {id:'c9',name:'Lain',icon:'📦',type:'both',color:'#8e8e93'}
 ];
 var DEFAULT_QAS = [
   {n:2000,l:'2K'},{n:5000,l:'5K'},{n:10000,l:'10K'},
@@ -624,6 +813,27 @@ var DEFAULT_QAS = [
 ];
 
 /* ---------- HELPERS ---------- */
+function terbilangRingkas(n){
+  n = Math.round(Number(n)||0);
+  if(n <= 0) return '';
+  if(n >= 1000000000000) return (n/1000000000000).toLocaleString('id-ID',{maximumFractionDigits:2}) + ' Triliun';
+  if(n >= 1000000000) return (n/1000000000).toLocaleString('id-ID',{maximumFractionDigits:2}) + ' Miliar';
+  if(n >= 1000000) return (n/1000000).toLocaleString('id-ID',{maximumFractionDigits:2}) + ' Juta';
+  if(n >= 1000) return (n/1000).toLocaleString('id-ID',{maximumFractionDigits:1}) + ' Ribu';
+  return String(n);
+}
+function updateAmtPreview(el, prevId){
+  var p = $(prevId);
+  if(!p) return;
+  var v = num(el ? el.value : 0);
+  if(v > 0){
+    p.textContent = rp(v) + ' (' + terbilangRingkas(v) + ')';
+    p.style.display = 'block';
+  } else {
+    p.textContent = '';
+    p.style.display = 'none';
+  }
+}
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function pad(n){ return String(n).padStart(2,'0'); }
 function todayStr(){ var d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
@@ -973,9 +1183,43 @@ function renderDash(){
   var m=thisMonth();
   var inc=0,exp=0;
   tx.forEach(function(t){ if(monthKey(t.date)===m){ if(t.type==='inc') inc+=t.amount; else exp+=t.amount; } });
-  var bal=0; tx.forEach(function(t){ bal += (t.type==='inc'? t.amount : -t.amount); });
-  setHTML('sInc',rp(inc)); setHTML('sExp',rp(exp)); setHTML('sBal',rp(bal)); setHTML('sCnt',String(tx.length));
-  var recent=tx.slice().sort(function(a,b){ return (b.date+b.time).localeCompare(a.date+a.time); }).slice(0,8);
+  var balMonth = inc - exp;
+
+  // Total Kas Riil dari semua Dompet
+  var totalKas = 0;
+  wps.forEach(function(w){
+    var b = Number(w.balance) || 0;
+    tx.forEach(function(t){ if(t.walletId===w.id) b += (t.type==='inc' ? t.amount : -t.amount); });
+    totalKas += b;
+  });
+  if(!wps.length){
+    tx.forEach(function(t){ totalKas += (t.type==='inc' ? t.amount : -t.amount); });
+  }
+
+  // Total Investasi & Net Worth
+  var totalPf = pfs.reduce(function(a,p){ return a + (Number(p.value)||0); }, 0);
+  var netWorth = totalKas + totalPf;
+
+  // Burn Rate Harian & Proyeksi
+  var now = new Date();
+  var curDay = now.getDate();
+  var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  var dailyBurn = curDay > 0 ? Math.round(exp / curDay) : 0;
+  var projected = Math.round(dailyBurn * daysInMonth);
+
+  setHTML('sInc', rp(inc));
+  setHTML('sExp', rp(exp));
+  setHTML('sBal', (balMonth >= 0 ? '+' : '') + rp(balMonth));
+  var sBalEl = $('sBal');
+  if(sBalEl) sBalEl.style.color = balMonth >= 0 ? 'var(--green)' : 'var(--red)';
+  setHTML('sKas', rp(totalKas));
+  setHTML('sNetWorth', rp(netWorth));
+  setHTML('sDailyBurn', rp(dailyBurn) + '/hari');
+  setHTML('sDailySub', 'Hari ke-' + curDay + ' dari ' + daysInMonth);
+  setHTML('sProjected', rp(projected));
+  setHTML('sCnt', String(tx.length));
+
+  var recent = tx.slice().sort(function(a,b){ return (b.date+b.time).localeCompare(a.date+a.time); }).slice(0,8);
   setHTML('recentList', recent.length ? recent.map(txRow).join('') : '<div class="empty"><span class="e">📝</span>Belum ada transaksi</div>');
   renderCatBreak();
 }
@@ -1014,16 +1258,84 @@ function renderCatBreak(){
 function renderTxPage(){
   var ft=$('fType')?$('fType').value:'all';
   var fc=$('fCat')?$('fCat').value:'all';
+  var fw=$('fWallet')?$('fWallet').value:'all';
   var fd=$('fDate')?$('fDate').value:'';
+  var q=$('fSearch')?$('fSearch').value.trim().toLowerCase():'';
+
+  var fwEl=$('fWallet');
+  if(fwEl && fwEl.options.length<=1){
+    fwEl.innerHTML='<option value="all">Semua Dompet</option>'+wps.map(function(w){
+      return '<option value="'+w.id+'">'+esc(w.icon||'🏦')+' '+esc(w.name)+'</option>';
+    }).join('');
+    fwEl.value=fw;
+  }
+
   var list=tx.filter(function(t){
     if(ft!=='all' && t.type!==ft) return false;
     if(fc!=='all' && t.category!==fc) return false;
+    if(fw!=='all' && t.walletId!==fw) return false;
     if(fd && t.date!==fd) return false;
+    if(q){
+      var n=(t.name||'').toLowerCase();
+      var no=(t.note||'').toLowerCase();
+      var c=catOf(t.category);
+      var cn=c?c.name.toLowerCase():'';
+      if(n.indexOf(q)===-1 && no.indexOf(q)===-1 && cn.indexOf(q)===-1) return false;
+    }
     return true;
   }).sort(function(a,b){ return (b.date+b.time).localeCompare(a.date+a.time); });
-  setHTML('allList', list.length ? list.map(txRow).join('') : '<div class="empty"><span class="e">📝</span>Belum ada transaksi</div>');
+
+  var sumInc=0, sumExp=0;
+  list.forEach(function(t){ if(t.type==='inc') sumInc+=t.amount; else sumExp+=t.amount; });
+  var net=sumInc-sumExp;
+  var sumBar=$('txSummaryBar');
+  if(sumBar){
+    sumBar.innerHTML=
+      '<div class="summary-chip">Total: <b>'+list.length+' transaksi</b></div>'+
+      '<div class="summary-chip inc">Masuk: <b>+'+rp(sumInc)+'</b></div>'+
+      '<div class="summary-chip exp">Keluar: <b>−'+rp(sumExp)+'</b></div>'+
+      '<div class="summary-chip">Net: <b style="color:'+(net>=0?'var(--green)':'var(--red)')+'">'+(net>=0?'+':'')+rp(net)+'</b></div>';
+  }
+
+  if(!list.length){
+    setHTML('allList', '<div class="empty"><span class="e">📝</span>Tidak ada transaksi yang cocok</div>');
+    return;
+  }
+
+  var groups={};
+  list.forEach(function(t){
+    var d=t.date||'Lainnya';
+    if(!groups[d]) groups[d]={date:d, inc:0, exp:0, items:[]};
+    if(t.type==='inc') groups[d].inc+=t.amount; else groups[d].exp+=t.amount;
+    groups[d].items.push(t);
+  });
+
+  var groupKeys=Object.keys(groups).sort().reverse();
+  var html=groupKeys.map(function(k){
+    var g=groups[k];
+    var dLabel=dLong(g.date);
+    if(g.date===todayStr()) dLabel='Hari Ini ('+dLabel+')';
+    var head='<div class="tx-date-head">'+
+      '<div>'+esc(dLabel)+'</div>'+
+      '<div class="totals">'+
+        (g.inc>0?'<span class="tot-inc">+'+rp(g.inc)+'</span>':'')+
+        (g.exp>0?'<span class="tot-exp">−'+rp(g.exp)+'</span>':'')+
+      '</div>'+
+    '</div>';
+    var rows=g.items.map(txRow).join('');
+    return head+rows;
+  }).join('');
+
+  setHTML('allList', html);
 }
-function resetFilters(){ $('fType').value='all'; $('fCat').value='all'; $('fDate').value=''; renderTxPage(); }
+function resetFilters(){
+  if($('fType')) $('fType').value='all';
+  if($('fCat')) $('fCat').value='all';
+  if($('fWallet')) $('fWallet').value='all';
+  if($('fDate')) $('fDate').value='';
+  if($('fSearch')) $('fSearch').value='';
+  renderTxPage();
+}
 
 function renderAmps(){
   var m=thisMonth();
@@ -1074,7 +1386,7 @@ function renderFrqs(){
       '<div style="font-size:22px">'+esc(f.icon||'📅')+'</div>'+
       '<div style="flex:1;min-width:0"><div class="wname">'+esc(f.name)+'</div><div class="wtype">'+esc(when)+(c?' · '+esc(c.name):'')+'</div></div>'+
       '<div style="text-align:right"><div style="font-weight:600;font-size:13px">'+rp(f.amount)+'</div>'+
-      '<div style="margin-top:4px;display:flex;gap:4px"><button class="btn btn-s btn-sm" onclick="openFrq(\''+f.id+'\')">Edit</button><button class="btn btn-s btn-sm" onclick="delFrq(\''+f.id+'\')">Hapus</button></div></div>'+
+      '<div style="margin-top:4px;display:flex;gap:4px;justify-content:flex-end"><button class="btn btn-p btn-sm" onclick="quickPayFrq(\''+f.id+'\')" title="Catat bayar tagihan hari ini">⚡ Bayar</button><button class="btn btn-s btn-sm" onclick="openFrq(\''+f.id+'\')">Edit</button><button class="btn btn-s btn-sm" onclick="delFrq(\''+f.id+'\')">Hapus</button></div></div>'+
     '</div>';
   }).join('') : '<div class="empty">Belum ada tagihan berulang</div>');
 }
@@ -1293,6 +1605,7 @@ function openTx(id){
   renderTxModalCats();
   fillWalletSelects();
   $('txW').value = t?(t.walletId||''):'';
+  updateAmtPreview($('txA'),'txA_prev');
   openM('mTx');
   setTimeout(function(){ $('txN').focus(); },80);
 }
@@ -1409,6 +1722,7 @@ function openAmp(id){
   $('ampA').value=a?a.amount:'';
   fillCatSelects();
   $('ampC').value=a?(a.category||''):'';
+  updateAmtPreview($('ampA'),'ampA_prev');
   openM('mAmp');
 }
 function saveAmp(){
@@ -1450,6 +1764,7 @@ function openFrq(id){
   $('frqA').value=f?f.amount:'';
   fillCatSelects();
   $('frqC').value=f?(f.category||''):'';
+  updateAmtPreview($('frqA'),'frqA_prev');
   setFrq(f?f.freq:'monthly');
   $('frqD').value=f?f.day:1;
   openM('mFrq');
@@ -1499,6 +1814,7 @@ function openWp(id){
   $('wpN').value=w?w.name:'';
   $('wpI').value=w?(w.icon||''):'';
   $('wpA').value=w?w.balance:'';
+  updateAmtPreview($('wpA'),'wpA_prev');
   setWpType(w?w.type:'bank');
   openM('mWp');
 }
@@ -1536,8 +1852,385 @@ function delWp(id){
   persist(); renderWallets(); fillWalletSelects(); toast('Dompet dihapus','ok');
 }
 function fillWalletSelects(){
-  var opts='<option value="">Tanpa dompet</option>'+wps.map(function(w){ return '<option value="'+w.id+'">'+esc(w.name)+'</option>'; }).join('');
+  var opts='<option value="">Tanpa dompet</option>'+wps.map(function(w){ return '<option value="'+w.id+'">'+esc(w.icon||'🏦')+' '+esc(w.name)+'</option>'; }).join('');
   var e=$('txW'); if(e){ var v=e.value; e.innerHTML=opts; e.value=wps.some(function(w){return w.id===v;})?v:''; }
+  var fw=$('fWallet'); if(fw){ var fv=fw.value; fw.innerHTML='<option value="all">Semua Dompet</option>'+wps.map(function(w){ return '<option value="'+w.id+'">'+esc(w.icon||'🏦')+' '+esc(w.name)+'</option>'; }).join(''); fw.value=wps.some(function(w){return w.id===fv;})?fv:'all'; }
+}
+
+/* ---------- QUICK PAY RECURRING ---------- */
+function quickPayFrq(id){
+  var f=frqs.filter(function(x){return x.id===id;})[0];
+  if(!f) return;
+  var wOpts=wps.length ? wps.map(function(w,idx){return (idx+1)+'. '+w.name;}).join('\n') : '';
+  if(!confirm('Catat pembayaran tagihan "'+f.name+'" sebesar '+rp(f.amount)+' hari ini?')) return;
+
+  var chosenWallet='';
+  if(wps.length===1){
+    chosenWallet=wps[0].id;
+  } else if(wps.length>1){
+    var pick=prompt('Pilih nomor dompet pembayaran:\n'+wOpts+'\n(Kosongkan jika tanpa dompet)','1');
+    if(pick===null) return;
+    var idx=parseInt(pick,10)-1;
+    if(wps[idx]) chosenWallet=wps[idx].id;
+  }
+
+  var date=todayStr(), time=nowTime();
+  var payload={
+    user_id:user?user.id:null,
+    name:'Bayar: '+f.name,
+    type:'exp',
+    amount:f.amount,
+    category:f.category||null,
+    date:date,
+    time:time,
+    wallet_id:chosenWallet||null,
+    note:'Pembayaran rutin '+f.name,
+    recurring_id:f.id
+  };
+
+  if(mode==='cloud'&&sb&&user){
+    sb.from('transactions').insert(payload).select().then(function(r){
+      if(r.error){ toast(r.error.message,'err'); return; }
+      var row=r.data&&r.data[0];
+      tx.push({id:row?row.id:uid(),name:payload.name,type:'exp',amount:f.amount,category:f.category,date:date,time:time,walletId:chosenWallet,note:payload.note,recurringId:f.id});
+      renderDash(); renderTxPage(); renderAmps(); renderWallets();
+      toast('Tagihan '+f.name+' berhasil dibayar & dicatat ✓','ok');
+    });
+    return;
+  }
+  tx.push({id:uid(),name:payload.name,type:'exp',amount:f.amount,category:f.category,date:date,time:time,walletId:chosenWallet,note:payload.note,recurringId:f.id});
+  persist(); renderDash(); renderTxPage(); renderAmps(); renderWallets();
+  toast('Tagihan '+f.name+' berhasil dibayar & dicatat ✓','ok');
+}
+
+/* ---------- TRANSFER ANTAR DOMPET ---------- */
+function openTransfer(){
+  if(wps.length<2){
+    toast('Buat minimal 2 dompet untuk transfer saldo','err');
+    openWp();
+    return;
+  }
+  fillTransferSelects();
+  $('tfA').value='';
+  if($('tfFee')) $('tfFee').value='';
+  $('tfD').value=todayStr();
+  $('tfNote').value='';
+  updateAmtPreview($('tfA'),'tfA_prev');
+  updateAmtPreview($('tfFee'),'tfFee_prev');
+  renderTransferBalances();
+  openM('mTransfer');
+}
+
+function fillTransferSelects(){
+  var opts=wps.map(function(w){
+    return '<option value="'+w.id+'">'+esc(w.icon||'🏦')+' '+esc(w.name)+'</option>';
+  }).join('');
+  $('tfFrom').innerHTML=opts;
+  $('tfTo').innerHTML=opts;
+  if(wps.length>1) $('tfTo').selectedIndex=1;
+}
+
+function getWalletRealBalance(wid){
+  var w=walletOf(wid);
+  if(!w) return 0;
+  var bal=Number(w.balance)||0;
+  tx.forEach(function(t){ if(t.walletId===wid) bal+=(t.type==='inc'?t.amount:-t.amount); });
+  return bal;
+}
+
+function renderTransferBalances(){
+  var fromId=$('tfFrom').value;
+  var toId=$('tfTo').value;
+  var bFrom=getWalletRealBalance(fromId);
+  var bTo=getWalletRealBalance(toId);
+  setHTML('tfFromBal','Saldo saat ini: <b>'+rp(bFrom)+'</b>');
+  setHTML('tfToBal','Saldo saat ini: <b>'+rp(bTo)+'</b>');
+}
+
+function saveTransfer(){
+  var fromId=$('tfFrom').value;
+  var toId=$('tfTo').value;
+  var amount=num($('tfA').value);
+  var fee=num($('tfFee')?$('tfFee').value:0);
+  var date=$('tfD').value||todayStr();
+  var note=$('tfNote').value.trim();
+
+  if(fromId===toId){ toast('Dompet asal dan tujuan tidak boleh sama','err'); return; }
+  if(amount<=0){ toast('Jumlah transfer harus lebih dari 0','err'); $('tfA').focus(); return; }
+
+  var wFrom=walletOf(fromId);
+  var wTo=walletOf(toId);
+  var curBal=getWalletRealBalance(fromId);
+  if(curBal<(amount+fee)){
+    if(!confirm('Peringatan: Saldo dompet asal ('+rp(curBal)+') kurang dari transfer ('+rp(amount+fee)+'). Tetap lanjutkan?')) return;
+  }
+
+  var tfCat=cats.find(function(c){return c.name.toLowerCase()==='transfer';});
+  var catId=tfCat?tfCat.id:(cats[0]?cats[0].id:null);
+  var time=nowTime();
+
+  var txOut={
+    id:uid(),
+    user_id:user?user.id:null,
+    name:'Transfer ke '+(wTo?wTo.name:'Dompet'),
+    type:'exp',
+    amount:amount,
+    category:catId,
+    date:date,
+    time:time,
+    wallet_id:fromId,
+    note:note?('Transfer: '+note):('Transfer ke '+(wTo?wTo.name:''))
+  };
+
+  var txIn={
+    id:uid(),
+    user_id:user?user.id:null,
+    name:'Transfer dari '+(wFrom?wFrom.name:'Dompet'),
+    type:'inc',
+    amount:amount,
+    category:catId,
+    date:date,
+    time:time,
+    wallet_id:toId,
+    note:note?('Transfer: '+note):('Transfer dari '+(wFrom?wFrom.name:''))
+  };
+
+  var payloads=[txOut,txIn];
+  if(fee>0){
+    payloads.push({
+      id:uid(),
+      user_id:user?user.id:null,
+      name:'Biaya Admin Transfer',
+      type:'exp',
+      amount:fee,
+      category:catId,
+      date:date,
+      time:time,
+      wallet_id:fromId,
+      note:'Biaya transfer ke '+(wTo?wTo.name:'')
+    });
+  }
+
+  if(mode==='cloud'&&sb&&user){
+    var insertRows=payloads.map(function(p){
+      return {user_id:user.id,name:p.name,type:p.type,amount:p.amount,category:p.category,date:p.date,time:p.time,wallet_id:p.wallet_id,note:p.note};
+    });
+    sb.from('transactions').insert(insertRows).select().then(function(r){
+      if(r.error){ toast(r.error.message,'err'); return; }
+      (r.data||[]).forEach(function(row,idx){
+        var src=payloads[idx];
+        tx.push({id:row.id,name:src.name,type:src.type,amount:src.amount,category:src.category,date:src.date,time:src.time,walletId:src.wallet_id,note:src.note,recurringId:''});
+      });
+      closeM('mTransfer'); renderDash(); renderTxPage(); renderWallets();
+      toast('Transfer '+rp(amount)+' berhasil ✓','ok');
+    });
+    return;
+  }
+
+  payloads.forEach(function(p){
+    tx.push({id:p.id,name:p.name,type:p.type,amount:p.amount,category:p.category,date:p.date,time:p.time,walletId:p.wallet_id,note:p.note,recurringId:''});
+  });
+  persist(); closeM('mTransfer'); renderDash(); renderTxPage(); renderWallets();
+  toast('Transfer '+rp(amount)+' berhasil ✓','ok');
+}
+
+/* ---------- FINANCIAL CALCULATOR (AMAN & FREEDOM) ---------- */
+var curCalcTab='aman';
+
+function switchCalcTab(tab){
+  curCalcTab=tab;
+  $('tabCalcAman').classList.toggle('on',tab==='aman');
+  $('tabCalcFreedom').classList.toggle('on',tab==='freedom');
+  $('calcPaneAman').classList.toggle('hid',tab!=='aman');
+  $('calcPaneFreedom').classList.toggle('hid',tab!=='freedom');
+  if(tab==='aman') runCalcAman();
+  else runCalcFire();
+}
+
+function onAmanProfileChange(){
+  var v=$('cAmanProfile').value;
+  var customWrap=$('cAmanCustomWrap');
+  if(v==='custom'){
+    customWrap.classList.remove('hid');
+  } else {
+    customWrap.classList.add('hid');
+    $('cAmanMonths').value=v;
+  }
+  runCalcAman();
+}
+
+function syncCalcWithRealData(){
+  var monthsCount={};
+  tx.forEach(function(t){
+    if(t.type==='exp'){
+      var m=monthKey(t.date);
+      if(m) monthsCount[m]=(monthsCount[m]||0)+t.amount;
+    }
+  });
+  var mKeys=Object.keys(monthsCount);
+  var mExp=0;
+  if(mKeys.length>0){
+    var totalExpAll=mKeys.reduce(function(acc,k){return acc+monthsCount[k];},0);
+    mExp=Math.round(totalExpAll/mKeys.length);
+  } else {
+    mExp=5000000;
+  }
+
+  var totalKas=0;
+  wps.forEach(function(w){
+    var b=Number(w.balance)||0;
+    tx.forEach(function(t){ if(t.walletId===w.id) b+=(t.type==='inc'?t.amount:-t.amount); });
+    totalKas+=b;
+  });
+  if(!wps.length){
+    tx.forEach(function(t){ totalKas+=(t.type==='inc'?t.amount:-t.amount); });
+  }
+  totalKas=Math.max(0,totalKas);
+
+  var totalPf=pfs.reduce(function(a,p){return a+(Number(p.value)||0);},0);
+
+  $('cAmanExp').value=mExp;
+  $('cAmanCur').value=totalKas;
+  $('cAmanSave').value=Math.round(mExp*0.2);
+
+  $('cFireExpM').value=mExp;
+  $('cFireCur').value=totalKas+totalPf;
+  $('cFireMonthly').value=Math.round(mExp*0.3);
+
+  updateAmtPreview($('cAmanExp'),'cAmanExp_prev');
+  updateAmtPreview($('cAmanCur'),'cAmanCur_prev');
+  updateAmtPreview($('cAmanSave'),'cAmanSave_prev');
+  updateAmtPreview($('cFireExpM'),'cFireExpM_prev');
+  updateAmtPreview($('cFireCur'),'cFireCur_prev');
+  updateAmtPreview($('cFireMonthly'),'cFireMonthly_prev');
+
+  runCalcAman();
+  runCalcFire();
+  toast('Data riil Anda berhasil disinkronkan ke kalkulator ✓','ok');
+}
+
+function initCalc(){
+  if(!$('cAmanExp').value){
+    syncCalcWithRealData();
+  } else {
+    runCalcAman();
+    runCalcFire();
+  }
+}
+
+function runCalcAman(){
+  var exp=num($('cAmanExp').value);
+  var months=num($('cAmanMonths').value)||6;
+  var cur=num($('cAmanCur').value);
+  var saveM=num($('cAmanSave').value);
+
+  var target=exp*months;
+  var gap=Math.max(0,target-cur);
+  var pct=target>0?Math.min(100,Math.round((cur/target)*100)):0;
+  var runway=exp>0?(cur/exp).toFixed(1):0;
+
+  setHTML('cAmanTarget',rp(target));
+  setHTML('cAmanTargetSub','Target untuk bertahan '+months+' bulan tanpa penghasilan');
+  setHTML('cAmanPct',pct+'%');
+  var bar=$('cAmanBar');
+  if(bar){
+    bar.style.width=pct+'%';
+    bar.style.background=pct>=100?'var(--green)':(pct>=50?'var(--accent)':'var(--red)');
+  }
+  setHTML('cAmanGap',gap>0?rp(gap):'Tercapai 🎉');
+  setHTML('cAmanRunway',runway+' Bulan');
+
+  var timeText='—';
+  if(gap<=0){
+    timeText='Sudah Tercapai 🎉';
+  } else if(saveM>0){
+    var monthsToTarget=Math.ceil(gap/saveM);
+    if(monthsToTarget<12){
+      timeText=monthsToTarget+' Bulan lagi';
+    } else {
+      var yr=(monthsToTarget/12).toFixed(1);
+      timeText=yr+' Tahun ('+monthsToTarget+' Bulan)';
+    }
+  } else {
+    timeText='Belum ada alokasi nabung';
+  }
+  setHTML('cAmanTimeToTarget',timeText);
+
+  var badgeText='Perlu Menabung';
+  var badgeCol='var(--red)';
+  if(pct>=100){
+    badgeText='Sangat Aman 🛡️ (100% Tercapai)';
+    badgeCol='var(--green)';
+  } else if(pct>=60){
+    badgeText='Cukup Aman 👍 ('+pct+'%)';
+    badgeCol='var(--accent)';
+  } else if(pct>=25){
+    badgeText='Waspada ⚠️ ('+pct+'%)';
+    badgeCol='#ff9500';
+  } else {
+    badgeText='Rentan 🚨 (Segera Sisihkan)';
+    badgeCol='var(--red)';
+  }
+  var sbEl=$('cAmanStatusBadge');
+  if(sbEl){
+    sbEl.textContent=badgeText;
+    sbEl.style.color=badgeCol;
+  }
+}
+
+function runCalcFire(){
+  var expM=num($('cFireExpM').value);
+  var swr=parseFloat($('cFireSwr').value)||0.04;
+  var cur=num($('cFireCur').value);
+  var saveM=num($('cFireMonthly').value);
+  var retAnnual=(parseFloat($('cFireReturn').value)||8)/100;
+
+  var annualExp=expM*12;
+  var fireTarget=swr>0?Math.round(annualExp/swr):0;
+  var gap=Math.max(0,fireTarget-cur);
+  var pct=fireTarget>0?Math.min(100,Math.round((cur/fireTarget)*100)):0;
+
+  var annualPassive=Math.round(fireTarget*swr);
+  var monthlyPassive=Math.round(annualPassive/12);
+
+  setHTML('cFireTarget',rp(fireTarget));
+  setHTML('cFireTargetSub','Aturan '+Math.round(1/swr)+'x Pengeluaran Tahunan ('+rp(annualExp)+'/thn)');
+  setHTML('cFirePct',pct+'%');
+  var bar=$('cFireBar');
+  if(bar){
+    bar.style.width=pct+'%';
+    bar.style.background=pct>=100?'var(--green)':'var(--accent)';
+  }
+
+  setHTML('cFireMonthlyPassive',rp(monthlyPassive)+' / bln');
+  setHTML('cFireAnnualPassive',rp(annualPassive)+' / thn');
+  setHTML('cFireGap',gap>0?rp(gap):'Tercapai 🚀');
+
+  var yearsText='—';
+  if(cur>=fireTarget && fireTarget>0){
+    yearsText='SUDAH FREEDOM! 🎉';
+  } else if(saveM>0 || (cur>0 && retAnnual>0)){
+    var r=retAnnual/12;
+    var n=0;
+    if(r>0){
+      var numerator=fireTarget+(saveM/r);
+      var denominator=cur+(saveM/r);
+      if(denominator>0 && numerator>0){
+        n=Math.log(numerator/denominator)/Math.log(1+r);
+      }
+    } else {
+      n=gap/saveM;
+    }
+    if(n>0 && isFinite(n)){
+      var y=(n/12).toFixed(1);
+      yearsText=y+' Tahun ('+Math.ceil(n)+' Bulan)';
+    } else {
+      yearsText='Belum dapat dihitung';
+    }
+  } else {
+    yearsText='Perlu rutin investasi';
+  }
+  setHTML('cFireYears',yearsText);
 }
 
 /* ---------- PORTFOLIO CRUD ---------- */
@@ -1549,6 +2242,8 @@ function openPf(id){
   $('pfS').value=p?(p.symbol||''):'';
   $('pfCap').value=p?p.capital:'';
   $('pfVal').value=p?p.value:'';
+  updateAmtPreview($('pfCap'),'pfCap_prev');
+  updateAmtPreview($('pfVal'),'pfVal_prev');
   setPfType(p?p.type:'saham');
   openM('mPf');
 }
@@ -1947,6 +2642,7 @@ function go(p){
   if(p==='frq') renderFrqs();
   if(p==='wp') renderWallets();
   if(p==='pf') renderPortfolio();
+  if(p==='calc') initCalc();
   if(p==='rep') renderReport();
   if(p==='admin'){ renderAdminCats(); renderAdminQa(); renderThemes(); }
   if(p==='prof') renderProfile();
