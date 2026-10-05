@@ -210,24 +210,39 @@ tbody tr:hover{background:var(--bg)}
       <h1>💰 CashFlow</h1>
       <p>Catat pengeluaran &amp; pemasukan</p>
     </div>
-    <div class="mode-row">
+    <div class="mode-row" style="display:none">
       <button class="mode-btn" id="modeBtn" onclick="toggleMode()" title="Ganti mode">☁️</button>
-      <span id="modeLabel">Mode: Local (tanpa akun)</span>
+      <span id="modeLabel">Mode: Cloud (Supabase)</span>
     </div>
     <div class="tabs">
       <button class="tab on" id="tabLogin" onclick="switchTab('login')">Masuk</button>
       <button class="tab" id="tabReg" onclick="switchTab('reg')">Daftar</button>
     </div>
     <div id="formLogin">
-      <div class="fg"><label>Email</label><input type="email" id="le" placeholder="email@contoh.com" autocomplete="username"></div>
-      <div class="fg"><label>Password</label><input type="password" id="lp" placeholder="Password" autocomplete="current-password"></div>
-      <button class="btn btn-p btn-full" onclick="doLogin()">Masuk</button>
+      <div class="fg">
+        <label>Username</label>
+        <input type="text" id="le" placeholder="Username (misal: admin123)" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')$('lp').focus()">
+      </div>
+      <div class="fg">
+        <label>Password</label>
+        <input type="password" id="lp" placeholder="Password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn btn-p btn-full" id="btnDoLogin" onclick="doLogin()">Masuk</button>
     </div>
     <div id="formReg" class="hid">
-      <div class="fg"><label>Nama</label><input type="text" id="rn" placeholder="Nama kamu"></div>
-      <div class="fg"><label>Email</label><input type="email" id="re" placeholder="email@contoh.com" autocomplete="username"></div>
-      <div class="fg"><label>Password</label><input type="password" id="rp" placeholder="Min. 6 karakter" autocomplete="new-password"></div>
-      <button class="btn btn-p btn-full" onclick="doReg()">Buat Akun</button>
+      <div class="fg">
+        <label>Username</label>
+        <input type="text" id="re" placeholder="Username unik (misal: budi)" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')$('rn').focus()">
+      </div>
+      <div class="fg">
+        <label>Nama Tampilan (Opsional)</label>
+        <input type="text" id="rn" placeholder="Nama kamu" onkeydown="if(event.key==='Enter')$('rp').focus()">
+      </div>
+      <div class="fg">
+        <label>Password</label>
+        <input type="password" id="rp" placeholder="Min. 6 karakter" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')doReg()">
+      </div>
+      <button class="btn btn-p btn-full" id="btnDoReg" onclick="doReg()">Buat Akun</button>
     </div>
   </div>
 </div>
@@ -491,7 +506,7 @@ tbody tr:hover{background:var(--bg)}
         </div>
         <div class="dv"></div>
         <div class="fg"><label>Nama Lengkap</label><input type="text" id="profNameI"></div>
-        <div class="fg"><label>Email</label><input type="email" id="profEmailI" disabled></div>
+        <div class="fg"><label>Username</label><input type="text" id="profEmailI" disabled></div>
         <div class="fg"><label>Telepon</label><input type="tel" id="profPhoneI" placeholder="Opsional"></div>
         <div class="fg"><label>Kota</label><input type="text" id="profCityI" placeholder="Opsional"></div>
         <div class="dv"></div>
@@ -653,7 +668,8 @@ function loadLocal(){
     qas=JSON.parse(JSON.stringify(DEFAULT_QAS));
   }
   var s=lsGet('cf_settings',null); if(s) S=Object.assign(S,s);
-  mode=lsGet('cf_mode','cloud');
+  mode='cloud';
+  lsSet('cf_mode','cloud');
   if(!cats.length) cats=JSON.parse(JSON.stringify(DEFAULT_CATS));
   if(!qas.length) qas=JSON.parse(JSON.stringify(DEFAULT_QAS));
 }
@@ -737,6 +753,19 @@ function seedCloudCats(){
 }
 
 /* ---------- AUTH ---------- */
+function usernameToEmail(u){
+  u = (u || '').trim().toLowerCase();
+  if(!u) return '';
+  if(u.indexOf('@') !== -1) return u;
+  var clean = u.replace(/[^a-z0-9_.-]/g, '');
+  return clean + '@cashflow.app';
+}
+
+function cleanUname(em){
+  if(!em) return '';
+  return em.indexOf('@cashflow.app') !== -1 ? em.replace(/@cashflow\.app$/i, '') : em;
+}
+
 function switchTab(t){
   $('tabLogin').classList.toggle('on',t==='login');
   $('tabReg').classList.toggle('on',t==='reg');
@@ -744,64 +773,121 @@ function switchTab(t){
   $('formReg').classList.toggle('hid',t!=='reg');
 }
 function toggleMode(){
-  if(mode==='local'){
-    if(!initCloud()) return;
-    mode='cloud';
-    toast('Mode Cloud aktif — silakan masuk/daftar','ok');
-  } else {
-    sb=null; mode='local';
-    toast('Mode Local — data di perangkat ini','ok');
-  }
-  lsSet('cf_mode',mode);
+  mode='cloud';
+  lsSet('cf_mode','cloud');
   paintMode();
 }
 function paintMode(){
-  $('modeLabel').textContent = mode==='local' ? 'Mode: Local (tanpa akun)' : 'Mode: Cloud (Supabase)';
-  $('modeBtn').textContent = mode==='local' ? '☁️' : '💾';
+  if($('modeLabel')) $('modeLabel').textContent = 'Mode: Cloud (Supabase)';
+  if($('modeBtn')) $('modeBtn').textContent = '☁️';
 }
 
 function doLogin(){
-  var em=$('le').value.trim(), pw=$('lp').value;
-  if(!em||!pw){ toast('Isi email dan password','err'); return; }
-  if(mode==='local'){
-    var users=lsGet('cf_users',{});
-    if(users[em] && users[em].pw===pw){
-      user={id:'local:'+em,email:em,name:users[em].name||em.split('@')[0]};
-      enterApp();
-    } else { toast('Email atau password salah','err'); }
-    return;
-  }
-  if(!sb && !initCloud()) return;
-  sb.auth.signInWithPassword({email:em,password:pw}).then(function(r){
-    if(r.error){ toast(r.error.message,'err'); return; }
-    user={id:r.data.user.id,email:r.data.user.email,name:(r.data.user.user_metadata&&r.data.user.user_metadata.name)||em.split('@')[0]};
+  var raw = $('le').value.trim();
+  var pw = $('lp').value;
+  if(!raw || !pw){ toast('Isi username dan password','err'); return; }
+  var em = usernameToEmail(raw);
+
+  if(!sb && !initCloud()){ toast('Koneksi Supabase belum siap','err'); return; }
+
+  $('le').disabled = true;
+  $('lp').disabled = true;
+  var btn = $('btnDoLogin');
+  if(btn) btn.textContent = 'Memeriksa...';
+
+  sb.auth.signInWithPassword({email: em, password: pw}).then(function(r){
+    $('le').disabled = false;
+    $('lp').disabled = false;
+    if(btn) btn.textContent = 'Masuk';
+
+    if(r.error){
+      var msg = r.error.message || '';
+      if(msg.indexOf('Invalid login credentials') !== -1 || msg.indexOf('invalid_grant') !== -1){
+        toast('Username atau password salah','err');
+      } else {
+        toast('Gagal masuk: ' + msg, 'err');
+      }
+      return;
+    }
+    var u = r.data.user;
+    var uname = (u.user_metadata && (u.user_metadata.name || u.user_metadata.username)) || cleanUname(u.email);
+    user = {
+      id: u.id,
+      email: u.email,
+      name: uname,
+      username: (u.user_metadata && u.user_metadata.username) || cleanUname(u.email)
+    };
     enterApp();
-  }).catch(function(e){ toast('Gagal masuk: '+e.message,'err'); });
+  }).catch(function(e){
+    $('le').disabled = false;
+    $('lp').disabled = false;
+    if(btn) btn.textContent = 'Masuk';
+    toast('Gagal masuk: ' + e.message, 'err');
+  });
 }
 
 function doReg(){
-  var nm=$('rn').value.trim(), em=$('re').value.trim(), pw=$('rp').value;
-  if(!nm||!em||!pw){ toast('Isi semua kolom','err'); return; }
-  if(pw.length<6){ toast('Password minimal 6 karakter','err'); return; }
-  if(mode==='local'){
-    var users=lsGet('cf_users',{});
-    if(users[em]){ toast('Email sudah terdaftar','err'); return; }
-    users[em]={name:nm,pw:pw}; lsSet('cf_users',users);
-    user={id:'local:'+em,email:em,name:nm};
-    enterApp();
-    return;
-  }
-  if(!sb && !initCloud()) return;
-  sb.auth.signUp({email:em,password:pw,options:{data:{name:nm}}}).then(function(r){
-    if(r.error){ toast(r.error.message,'err'); return; }
+  var raw = $('re').value.trim();
+  var nm = $('rn') ? $('rn').value.trim() : '';
+  var pw = $('rp').value;
+  if(!raw || !pw){ toast('Isi username dan password','err'); return; }
+  if(pw.length < 6){ toast('Password minimal 6 karakter','err'); return; }
+
+  var clean = raw.toLowerCase().replace(/[^a-z0-9_.-]/g, '');
+  if(clean.length < 3){ toast('Username minimal 3 karakter (huruf/angka)','err'); return; }
+  if(!nm) nm = raw;
+  var em = usernameToEmail(clean);
+
+  if(!sb && !initCloud()){ toast('Koneksi Supabase belum siap','err'); return; }
+
+  $('re').disabled = true;
+  if($('rn')) $('rn').disabled = true;
+  $('rp').disabled = true;
+  var btn = $('btnDoReg');
+  if(btn) btn.textContent = 'Mendaftar...';
+
+  sb.auth.signUp({
+    email: em,
+    password: pw,
+    options: {
+      data: {
+        name: nm,
+        username: clean
+      }
+    }
+  }).then(function(r){
+    $('re').disabled = false;
+    if($('rn')) $('rn').disabled = false;
+    $('rp').disabled = false;
+    if(btn) btn.textContent = 'Buat Akun';
+
+    if(r.error){
+      var msg = r.error.message || '';
+      if(msg.indexOf('already registered') !== -1 || msg.indexOf('User already exists') !== -1){
+        toast('Username sudah terdaftar, pakai yang lain','err');
+      } else {
+        toast('Gagal daftar: ' + msg, 'err');
+      }
+      return;
+    }
     if(r.data.session && r.data.user){
-      user={id:r.data.user.id,email:r.data.user.email,name:nm};
+      var u = r.data.user;
+      user = { id: u.id, email: u.email, name: nm, username: clean };
       enterApp();
     } else {
-      toast('Cek email untuk verifikasi, lalu masuk','ok');
+      toast('Akun dibuat! Masuk sekarang','ok');
+      $('le').value = clean;
+      $('lp').value = pw;
       switchTab('login');
+      doLogin();
     }
-  }).catch(function(e){ toast('Gagal daftar: '+e.message,'err'); });
+  }).catch(function(e){
+    $('re').disabled = false;
+    if($('rn')) $('rn').disabled = false;
+    $('rp').disabled = false;
+    if(btn) btn.textContent = 'Buat Akun';
+    toast('Gagal daftar: ' + e.message, 'err');
+  });
 }
 
 function enterApp(){
@@ -812,11 +898,12 @@ function enterApp(){
 }
 
 function doLogout(){
-  if(mode==='cloud' && sb){ try{ sb.auth.signOut(); }catch(e){} }
+  if(sb){ try{ sb.auth.signOut(); }catch(e){} }
   user=null; lsSet('cf_user',null);
   $('authView').classList.remove('hid');
   $('appView').classList.remove('on');
   $('le').value=''; $('lp').value='';
+  $('le').disabled=false; $('lp').disabled=false;
   toast('Kamu sudah keluar','ok');
 }
 
@@ -1689,8 +1776,9 @@ function loadAdminUsers(){
           '<button class="btn btn-d" onclick="admPurge(\''+u.id+'\')">🗑️</button>'
         )+
       '</div>';
+      var du = cleanUname(u.email);
       return '<tr>'+
-        '<td><div style="font-weight:600">'+esc(u.name||'-')+'</div><div class="chs">'+esc(u.email||'-')+'</div></td>'+
+        '<td><div style="font-weight:600">'+esc(u.name||du)+'</div><div class="chs">@'+esc(du)+'</div></td>'+
         '<td>'+badge+'</td>'+
         '<td><div>'+u.tx_count+' tx</div><div class="chs">+'+rp(u.tx_income)+' / -'+rp(u.tx_expense)+'</div></td>'+
         '<td><div class="chs">'+(u.last_active?('Terakhir: '+u.last_active):'Belum ada data')+'</div></td>'+
@@ -1731,11 +1819,12 @@ function admPurge(id){
 function admDetail(id){
   var u = admUsersCache.filter(function(x){ return x.id===id; })[0];
   if(!u) return;
-  $('auTitle').textContent = u.name || u.email;
-  $('auSub').textContent = u.email;
+  var du = cleanUname(u.email);
+  $('auTitle').textContent = u.name || du;
+  $('auSub').textContent = '@' + du;
   $('auBody').innerHTML =
     '<div class="aucard">'+
-      row('Email', u.email)+
+      row('Username', '@' + du)+
       row('Nama', u.name||'-')+
       row('Role', u.role)+
       row('Status', u.banned?'Dibanned':'Aktif')+
@@ -1769,11 +1858,12 @@ function row(k,v){ return '<div class="aurow"><span class="k">'+esc(k)+'</span><
 
 /* ---------- PROFILE ---------- */
 function renderProfile(){
-  $('profAv').textContent=((user&&user.name)||'U').charAt(0).toUpperCase();
-  $('profName').textContent=(user&&user.name)||'User';
-  $('profEmail').textContent=(user&&user.email)||'-';
+  var uname = cleanUname((user&&user.email)||'');
+  $('profAv').textContent=((user&&user.name)||uname||'U').charAt(0).toUpperCase();
+  $('profName').textContent=(user&&user.name)||uname||'User';
+  $('profEmail').textContent=uname ? ('@' + uname) : '-';
   $('profNameI').value=(user&&user.name)||'';
-  $('profEmailI').value=(user&&user.email)||'';
+  $('profEmailI').value=uname ? ('@' + uname) : '';
   $('profPhoneI').value=(user&&user.phone)||'';
   $('profCityI').value=(user&&user.city)||'';
 }
@@ -1874,30 +1964,39 @@ function fillCatSelects(){
 
 /* ---------- BOOT ---------- */
 function boot(){
+  mode='cloud';
+  lsSet('cf_mode','cloud');
   loadLocal();
+  mode='cloud';
+  lsSet('cf_mode','cloud');
   applyTheme(S.theme||'light');
-  paintMode();
   paintBrand();
 
   // restore session
-  var saved=lsGet('cf_user',null);
-  if(mode==='cloud'){
-    if(initCloud()){
-      sb.auth.getSession().then(function(r){
-        var sess=r.data&&r.data.session;
-        if(sess&&sess.user){
-          user={id:sess.user.id,email:sess.user.email,name:(sess.user.user_metadata&&sess.user.user_metadata.name)||sess.user.email.split('@')[0]};
-          enterApp();
-        } else if(saved && String(saved.id).indexOf('local:')!==0){
-          // stale cloud session; stay on auth screen
-        }
-      }).catch(function(){});
-    }
-  } else if(saved){
-    user=saved;
-    $('authView').classList.add('hid');
-    $('appView').classList.add('on');
-    renderAll();
+  if(initCloud()){
+    sb.auth.getSession().then(function(r){
+      var sess=r.data&&r.data.session;
+      if(sess&&sess.user){
+        var u=sess.user;
+        var uname=(u.user_metadata&&(u.user_metadata.name||u.user_metadata.username))||cleanUname(u.email);
+        user={id:u.id,email:u.email,name:uname,username:(u.user_metadata&&u.user_metadata.username)||cleanUname(u.email)};
+        enterApp();
+      }
+    }).catch(function(){});
+
+    sb.auth.onAuthStateChange(function(evt, sess){
+      if(evt==='SIGNED_IN' && sess && sess.user && !user){
+        var u=sess.user;
+        var uname=(u.user_metadata&&(u.user_metadata.name||u.user_metadata.username))||cleanUname(u.email);
+        user={id:u.id,email:u.email,name:uname,username:(u.user_metadata&&u.user_metadata.username)||cleanUname(u.email)};
+        enterApp();
+      } else if(evt==='SIGNED_OUT'){
+        user=null;
+        lsSet('cf_user',null);
+        $('authView').classList.remove('hid');
+        $('appView').classList.remove('on');
+      }
+    });
   }
 
   // modal backdrop close
