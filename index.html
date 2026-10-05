@@ -1014,7 +1014,6 @@ function doLogin(){
   var raw = $('le').value.trim();
   var pw = $('lp').value;
   if(!raw || !pw){ toast('Isi username dan password','err'); return; }
-  var em = usernameToEmail(raw);
 
   if(!sb && !initCloud()){ toast('Koneksi Supabase belum siap','err'); return; }
 
@@ -1023,11 +1022,18 @@ function doLogin(){
   var btn = $('btnDoLogin');
   if(btn) btn.textContent = 'Memeriksa...';
 
-  sb.auth.signInWithPassword({email: em, password: pw}).then(function(r){
+  var fallbackEmail = usernameToEmail(raw);
+  sb.rpc('resolve_user_email', { p_identifier: raw }).then(function(res){
+    var resolvedEmail = (res && res.data && res.data.indexOf('@') !== -1) ? res.data : fallbackEmail;
+    return sb.auth.signInWithPassword({ email: resolvedEmail, password: pw });
+  }).catch(function(){
+    return sb.auth.signInWithPassword({ email: fallbackEmail, password: pw });
+  }).then(function(r){
     $('le').disabled = false;
     $('lp').disabled = false;
     if(btn) btn.textContent = 'Masuk';
 
+    if(!r) return;
     if(r.error){
       var msg = r.error.message || '';
       if(msg.indexOf('Invalid login credentials') !== -1 || msg.indexOf('invalid_grant') !== -1){
@@ -2493,6 +2499,7 @@ function loadAdminUsers(){
       if(u.banned) badge += ' <span class="rbadge banned">banned</span>';
       var acts = '<div class="acts">'+
         '<button class="btn btn-s" onclick="admDetail(\''+u.id+'\')">👁️ Data</button>'+
+        '<button class="btn btn-s" onclick="admResetPw(\''+u.id+'\',\''+esc(u.name||du)+'\')" title="Ganti / Reset Password">🔑 Pass</button>'+
         (me ? '<span class="chs">(kamu)</span>' :
           '<button class="btn btn-s" onclick="admToggleRole(\''+u.id+'\',\''+u.role+'\')">'+(u.role==='admin'?'⬇️ Jadi User':'⬆️ Jadi Admin')+'</button>'+
           '<button class="btn btn-s" onclick="admToggleBan(\''+u.id+'\','+(u.banned?'false':'true')+')">'+(u.banned?'✅ Unban':'🚫 Ban')+'</button>'+
@@ -2537,6 +2544,17 @@ function admPurge(id){
     if(r.error){ toast(r.error.message,'err'); return; }
     toast('Semua data user dihapus','ok'); loadAdminUsers();
   });
+}
+
+function admResetPw(id, uname){
+  var np = prompt('Masukkan password baru untuk user "' + uname + '" (minimal 6 karakter):', 'adminadmin');
+  if(np === null) return;
+  np = np.trim();
+  if(np.length < 6){ toast('Password minimal 6 karakter', 'err'); return; }
+  sb.rpc('admin_set_user_password', { p_target: id, p_new_password: np }).then(function(r){
+    if(r.error){ toast('Gagal: ' + r.error.message, 'err'); return; }
+    toast('Password ' + uname + ' berhasil diubah ke "' + np + '" ✓', 'ok');
+  }).catch(function(e){ toast('Error: ' + e.message, 'err'); });
 }
 
 function admDetail(id){
