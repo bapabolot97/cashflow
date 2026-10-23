@@ -1044,6 +1044,20 @@ function doLogin(){
   var btn = $('btnDoLogin');
   if(btn) btn.textContent = 'Memeriksa...';
 
+  var loginTimer = setTimeout(function(){
+    $('le').disabled = false;
+    $('lp').disabled = false;
+    if(btn) btn.textContent = 'Masuk';
+    toast('Koneksi lambat / timeout, silakan coba tekan Masuk lagi', 'err');
+  }, 10000);
+
+  function resetBtn(){
+    clearTimeout(loginTimer);
+    $('le').disabled = false;
+    $('lp').disabled = false;
+    if(btn) btn.textContent = 'Masuk';
+  }
+
   var fallbackEmail = usernameToEmail(raw);
   sb.rpc('resolve_user_email', { p_identifier: raw }).then(function(res){
     var resolvedEmail = (res && res.data && res.data.indexOf('@') !== -1) ? res.data : fallbackEmail;
@@ -1051,9 +1065,7 @@ function doLogin(){
   }).catch(function(){
     return sb.auth.signInWithPassword({ email: fallbackEmail, password: pw });
   }).then(function(r){
-    $('le').disabled = false;
-    $('lp').disabled = false;
-    if(btn) btn.textContent = 'Masuk';
+    resetBtn();
 
     if(!r) return;
     if(r.error){
@@ -1075,9 +1087,7 @@ function doLogin(){
     };
     enterApp();
   }).catch(function(e){
-    $('le').disabled = false;
-    $('lp').disabled = false;
-    if(btn) btn.textContent = 'Masuk';
+    resetBtn();
     toast('Gagal masuk: ' + e.message, 'err');
   });
 }
