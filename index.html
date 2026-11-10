@@ -997,7 +997,7 @@ function showDbNotice(){
 function seedCloudCats(){
   if(mode!=='cloud'||!sb||!user) return;
   var rows=DEFAULT_CATS.map(function(c){ return {user_id:user.id,name:c.name,icon:c.icon,type:c.type,color:c.color}; });
-  sb.from('categories').insert(rows).then(function(r){
+  sb.from('categories').insert(rows).select().then(function(r){
     if(!r.error && r.data){ cats=r.data.map(function(x){ return {id:x.id,name:x.name,icon:x.icon,type:x.type,color:x.color}; }); renderAll(); }
   });
 }
@@ -1072,23 +1072,32 @@ function doLogin(){
       var msg = r.error.message || '';
       if(msg.indexOf('Invalid login credentials') !== -1 || msg.indexOf('invalid_grant') !== -1){
         toast('Username atau password salah','err');
+      } else if(msg.indexOf('Failed to fetch') !== -1 || msg.indexOf('NetworkError') !== -1){
+        toast('Gagal terhubung ke server database. Cek internet atau tunggu 1 menit lalu refresh (Ctrl+F5).','err');
       } else {
         toast('Gagal masuk: ' + msg, 'err');
       }
       return;
     }
     var u = r.data.user;
-    var uname = (u.user_metadata && (u.user_metadata.name || u.user_metadata.username)) || cleanUname(u.email);
-    user = {
-      id: u.id,
-      email: u.email,
-      name: uname,
-      username: (u.user_metadata && u.user_metadata.username) || cleanUname(u.email)
-    };
-    enterApp();
+    if(!user || user.id !== u.id){
+      var uname = (u.user_metadata && (u.user_metadata.name || u.user_metadata.username)) || cleanUname(u.email);
+      user = {
+        id: u.id,
+        email: u.email,
+        name: uname,
+        username: (u.user_metadata && u.user_metadata.username) || cleanUname(u.email)
+      };
+      enterApp();
+    }
   }).catch(function(e){
     resetBtn();
-    toast('Gagal masuk: ' + e.message, 'err');
+    var msg = (e && e.message) ? e.message : String(e);
+    if(msg.indexOf('Failed to fetch') !== -1 || msg.indexOf('NetworkError') !== -1){
+      toast('Gagal terhubung ke server database. Cek internet atau tunggu 1 menit lalu refresh (Ctrl+F5).','err');
+    } else {
+      toast('Gagal masuk: ' + msg, 'err');
+    }
   });
 }
 
@@ -1131,6 +1140,8 @@ function doReg(){
       var msg = r.error.message || '';
       if(msg.indexOf('already registered') !== -1 || msg.indexOf('User already exists') !== -1){
         toast('Username sudah terdaftar, pakai yang lain','err');
+      } else if(msg.indexOf('Failed to fetch') !== -1 || msg.indexOf('NetworkError') !== -1){
+        toast('Gagal terhubung ke server database. Cek internet atau tunggu 1 menit lalu refresh (Ctrl+F5).','err');
       } else {
         toast('Gagal daftar: ' + msg, 'err');
       }
@@ -1138,8 +1149,10 @@ function doReg(){
     }
     if(r.data.session && r.data.user){
       var u = r.data.user;
-      user = { id: u.id, email: u.email, name: nm, username: clean };
-      enterApp();
+      if(!user || user.id !== u.id){
+        user = { id: u.id, email: u.email, name: nm, username: clean };
+        enterApp();
+      }
     } else {
       toast('Akun dibuat! Masuk sekarang','ok');
       $('le').value = clean;
@@ -1152,7 +1165,12 @@ function doReg(){
     if($('rn')) $('rn').disabled = false;
     $('rp').disabled = false;
     if(btn) btn.textContent = 'Buat Akun';
-    toast('Gagal daftar: ' + e.message, 'err');
+    var msg = (e && e.message) ? e.message : String(e);
+    if(msg.indexOf('Failed to fetch') !== -1 || msg.indexOf('NetworkError') !== -1){
+      toast('Gagal terhubung ke server database. Cek internet atau tunggu 1 menit lalu refresh (Ctrl+F5).','err');
+    } else {
+      toast('Gagal daftar: ' + msg, 'err');
+    }
   });
 }
 
