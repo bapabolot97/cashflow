@@ -1,234 +1,144 @@
-// Runtime smoke test: load index.html in jsdom, boot the app, exercise core flows
+// Offline cloud UI smoke tests: auth and database are isolated in memory.
 const fs = require('fs');
-const { JSDOM } = require('jsdom');
+const path = require('path');
+const assert = require('assert');
+const {JSDOM, VirtualConsole} = require('jsdom');
+const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+const errors = [], results = [], windows = [];
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+async function until(fn, label) {
+  for (let i = 0; i < 150; i++) { if (fn()) return; await delay(10); }
+  throw new Error('Timed out waiting for ' + label);
+}
+function check(label, fn) {
+  try { fn(); results.push(true); console.log('PASS  ' + label); }
+  catch (e) { results.push(false); console.log('FAIL  ' + label + ': ' + e.message); }
+}
 
-const html = fs.readFileSync('D:/cashflow-app/index.html', 'utf8');
-
-const errors = [];
-const dom = new JSDOM(html, {
-  runScripts: 'dangerously',
-  resources: undefined,           // do NOT fetch the supabase CDN
-  pretendToBeVisual: true,
-  url: 'http://localhost/'
-});
-const { window } = dom;
-
-window.addEventListener('error', e => errors.push('window.onerror: ' + (e.error && e.error.stack || e.message)));
-window.onerror = (m, s, l, c, err) => { errors.push('onerror: ' + (err && err.stack || m)); };
-const origErr = console.error;
-window.console.error = (...a) => { errors.push('console.error: ' + a.join(' ')); };
-
-// jsdom has no canvas; stub it
-window.HTMLCanvasElement.prototype.getContext = function () {
-  const noop = () => {};
-  return {
-    clearRect: noop, fillRect: noop, fillText: noop, beginPath: noop, moveTo: noop,
-    lineTo: noop, arc: noop, closePath: noop, fill: noop, stroke: noop,
-    set fillStyle(v) {}, get fillStyle() { return ''; },
-    set strokeStyle(v) {}, get strokeStyle() { return ''; },
-    set font(v) {}, get font() { return ''; },
-    set textAlign(v) {}, get textAlign() { return ''; }
+// Unsupported operations fail instead of silently succeeding.
+function mockSupabase() {
+  const tables = Object.fromEntries(['transactions','categories','budgets','recurring','wallets','portfolio','settings'].map(t => [t, []]));
+  const account = {id:'mock-user-1', email:'smoke@cashflow.app', user_metadata:{name:'Smoke User', username:'smoke'}};
+  const copy = value => JSON.parse(JSON.stringify(value));
+  let session = null, nextId = 1;
+  function from(table) {
+    if (!tables[table]) throw new Error('Unsupported table: ' + table);
+    let operation = 'select', payload, filters = [], single = false;
+    const q = {
+      select() { return q; },
+      insert(value) { operation = 'insert'; payload = value; return q; },
+      eq(key, value) { filters.push([key, value]); return q; },
+      order() { return q; },
+      maybeSingle() { single = true; return q; },
+      then(resolve, reject) {
+        return Promise.resolve().then(() => {
+          if (!session) throw new Error('Database access without mock session');
+          let rows;
+          if (operation === 'insert') {
+            rows = (Array.isArray(payload) ? payload : [payload]).map(row => {
+              if (row.user_id !== account.id) throw new Error('Wrong mock user_id');
+              const stored = {...copy(row), id:'mock-row-' + nextId++};
+              tables[table].push(stored); return stored;
+            });
+          } else rows = tables[table].filter(row => filters.every(([key, value]) => row[key] === value));
+          return {data:single ? (rows[0] ? copy(rows[0]) : null) : copy(rows), error:null};
+        }).then(resolve, reject);
+      }
+    };
+    return q;
+  }
+  const client = {
+    from,
+    rpc(name, args) {
+      if (name === 'resolve_user_email') return Promise.resolve({data:args.p_identifier === 'smoke' ? account.email : null, error:null});
+      if (name === 'is_admin') return Promise.resolve({data:false, error:null});
+      if (name === 'log_user_login') return Promise.resolve({data:null, error:null});
+      return Promise.reject(new Error('Unsupported RPC: ' + name));
+    },
+    auth: {
+      getSession: () => Promise.resolve({data:{session}}),
+      onAuthStateChange: () => ({data:{subscription:{unsubscribe(){}}}}),
+      signInWithPassword({email, password}) {
+        if (email !== account.email || password !== 'fake-password') return Promise.resolve({data:{user:null, session:null}, error:{message:'Invalid login credentials'}});
+        session = {user:copy(account)};
+        return Promise.resolve({data:{user:copy(account), session:copy(session)}, error:null});
+      },
+      signOut() { session = null; return Promise.resolve({error:null}); }
+    }
   };
-};
-const wait = ms => new Promise(r => setTimeout(r, ms));
+  return {createClient:() => client};
+}
+const mock = mockSupabase();
+function makeDom() {
+  const vc = new VirtualConsole();
+  vc.on('jsdomError', e => errors.push('jsdom: ' + e.message));
+  vc.on('error', (...args) => errors.push('console.error: ' + args.join(' ')));
+  const dom = new JSDOM(html, {
+    runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
+    // Default jsdom resource loader does not fetch external scripts or other resources.
+    beforeParse(w) {
+      w.supabase = mock;
+      w.addEventListener('error', e => errors.push('window: ' + (e.error && e.error.stack || e.message)));
+      w.fetch = () => { errors.push('Blocked fetch'); return Promise.reject(new Error('Network disabled')); };
+      w.XMLHttpRequest = class { constructor() { errors.push('Blocked XMLHttpRequest'); throw new Error('Network disabled'); } };
+      w.WebSocket = class { constructor() { errors.push('Blocked WebSocket'); throw new Error('Network disabled'); } };
+      w.scrollTo = () => {};
+      w.HTMLCanvasElement.prototype.getContext = () => ({clearRect(){},fillRect(){},fillText(){},beginPath(){},moveTo(){},lineTo(){},arc(){},closePath(){},fill(){},stroke(){}});
+    }
+  });
+  windows.push(dom.window); return dom.window;
+}
+function click(w, selector) { const el = w.document.querySelector(selector); assert(el, 'Missing element ' + selector); el.click(); }
+const text = (w, id) => w.document.getElementById(id).textContent.trim();
+const digits = s => s.replace(/\D/g, '');
 
 (async () => {
-  await wait(300);  // let DOMContentLoaded/boot run
-
-  const d = window.document;
-  const $ = id => d.getElementById(id);
-  const out = [];
-  const check = (label, cond, extra) => out.push((cond ? 'PASS' : 'FAIL') + '  ' + label + (extra ? '  [' + extra + ']' : ''));
-
-  // 1. boot happened
-  check('boot: settings loaded', typeof window.S !== 'undefined' && window.S && window.S.appName === 'CashFlow');
-  check('boot: default categories seeded', Array.isArray(window.cats) && window.cats.length >= 8, 'cats=' + (window.cats||[]).length);
-  check('boot: quick amounts seeded', Array.isArray(window.qas) && window.qas.length === 6);
-  check('boot: auth screen visible', !$('authView').classList.contains('hid'));
-  check('boot: app hidden', !$('appView').classList.contains('on'));
-
-  // 2. register in local mode
-  $('rn').value = 'Budi';
-  $('re').value = 'budi@test.com';
-  $('rp').value = 'rahasia123';
-  window.doReg();
-  await wait(120);
-  check('register: app visible', $('appView').classList.contains('on'));
-  check('register: auth hidden', $('authView').classList.contains('hid'));
-  check('register: user set', window.user && window.user.name === 'Budi');
-  check('register: greeting rendered', $('uName').textContent === 'Budi', 'uName=' + $('uName').textContent);
-
-  // 3. quick add a transaction
-  window.setQType('exp');
-  $('qAmt').value = '25000';
-  window.saveQuick();
-  await wait(80);
-  check('quick add: transaction stored', window.tx.length === 1, 'tx=' + window.tx.length);
-  check('quick add: amount correct', window.tx[0] && window.tx[0].amount === 25000);
-  check('quick add: type expense', window.tx[0] && window.tx[0].type === 'exp');
-  check('quick add: has date', !!(window.tx[0] && /^\d{4}-\d{2}-\d{2}$/.test(window.tx[0].date)));
-  check('quick add: has time HH:MM (no seconds)', !!(window.tx[0] && /^\d{2}:\d{2}$/.test(window.tx[0].time)), 'time=' + (window.tx[0]||{}).time);
-  check('quick add: input cleared', $('qAmt').value === '');
-
-  // 4. dashboard reflects it
-  check('dash: expense stat updated', $('sExp').textContent !== 'Rp 0', 'sExp=' + $('sExp').textContent);
-  check('dash: transaction count = 1', $('sCnt').textContent === '1');
-  check('dash: recent list rendered', $('recentList').innerHTML.indexOf('Transaksi') === -1 || $('recentList').innerHTML.indexOf('ti') !== -1);
-  check('dash: category breakdown rendered', $('catBreak').innerHTML.length > 10);
-
-  // 5. quick add income
-  window.setQType('inc');
-  $('qAmt').value = '5000000';
-  window.saveQuick();
-  await wait(80);
-  check('income add: stored', window.tx.length === 2);
-  check('dash: income stat updated', $('sInc').textContent !== 'Rp 0', 'sInc=' + $('sInc').textContent);
-  check('dash: balance = 4,975,000', $('sBal').textContent.replace(/\D/g,'') === '4975000', 'sBal=' + $('sBal').textContent);
-
-  // 6. full transaction modal
-  window.openTx();
-  await wait(50);
-  check('tx modal: opens', $('mTx').classList.contains('on'));
-  $('txN').value = 'Bayar kos';
-  $('txA').value = '750000';
-  window.saveTx();
-  await wait(80);
-  check('tx modal: saved', window.tx.length === 3, 'tx=' + window.tx.length);
-  check('tx modal: closed after save', !$('mTx').classList.contains('on'));
-  check('tx modal: name stored', window.tx.some(t => t.name === 'Bayar kos'));
-
-  // 7. wallet
-  window.openWp();
-  await wait(40);
-  $('wpN').value = 'BCA';
-  $('wpA').value = '1000000';
-  window.setWpType('bank');
-  window.saveWp();
-  await wait(80);
-  check('wallet: created', window.wps.length === 1, 'wps=' + window.wps.length);
-  check('wallet: balance', window.wps[0] && window.wps[0].balance === 1000000);
-  check('wallet: rendered in list', $('wpList').innerHTML.indexOf('BCA') !== -1);
-
-  // 8. amplop
-  window.openAmp();
-  await wait(40);
-  $('ampN').value = 'Makan';
-  $('ampA').value = '1500000';
-  window.saveAmp();
-  await wait(80);
-  check('amplop: created', window.amps.length === 1);
-  check('amplop: rendered', $('ampList').innerHTML.indexOf('Makan') !== -1);
-  check('amplop: total label set', $('ampLbl').textContent.indexOf('1.500.000') !== -1, 'ampLbl=' + $('ampLbl').textContent);
-
-  // 9. recurring
-  window.openFrq();
-  await wait(40);
-  $('frqN').value = 'Spotify';
-  $('frqA').value = '54990';
-  window.setFrq('monthly');
-  $('frqD').value = '5';
-  window.saveFrq();
-  await wait(80);
-  check('recurring: created', window.frqs.length === 1);
-  check('recurring: rendered', $('frqList').innerHTML.indexOf('Spotify') !== -1);
-  check('calendar: rendered', $('calGrid').innerHTML.length > 50);
-  check('calendar: month label', $('calLabel').textContent.length > 3, $('calLabel').textContent);
-
-  // 10. portfolio
-  window.openPf();
-  await wait(40);
-  $('pfN').value = 'BBCA';
-  $('pfS').value = 'BBCA';
-  $('pfCap').value = '10000000';
-  $('pfVal').value = '12000000';
-  window.setPfType('saham');
-  window.savePf();
-  await wait(80);
-  check('portfolio: created', window.pfs.length === 1);
-  check('portfolio: PnL = +2,000,000', $('pfPnl').textContent.replace(/\D/g,'') === '2000000', 'pfPnl=' + $('pfPnl').textContent);
-  check('portfolio: rendered', $('pfList').innerHTML.indexOf('BBCA') !== -1);
-
-  // 11. category admin
-  window.openCat();
-  await wait(40);
-  $('catN').value = 'Jajan';
-  $('catI').value = '🍰';
-  $('catT').value = 'exp';
-  $('catC').value = '#e91e63';
-  window.saveCat();
-  await wait(80);
-  check('category: added', window.cats.length === 9, 'cats=' + window.cats.length);
-  check('category: rendered in admin table', $('catBody').innerHTML.indexOf('Jajan') !== -1);
-
-  // 12. navigation across all pages
-  const pages = ['dash','tx','amp','frq','wp','pf','rep','admin','prof'];
-  let navOk = true;
-  pages.forEach(p => {
-    window.go(p);
-    const el = $('p-' + p);
-    if (!el || !el.classList.contains('on')) { navOk = false; out.push('FAIL  nav: page ' + p + ' did not activate'); }
-  });
-  check('navigation: all 9 pages activate', navOk);
-
-  // 13. report
-  window.go('rep');
-  window.renderReport();
-  await wait(60);
-  check('report: income total', $('rInc').textContent.replace(/\D/g,'') === '5000000', 'rInc=' + $('rInc').textContent);
-  check('report: expense total', $('rExp').textContent.replace(/\D/g,'') === '775000', 'rExp=' + $('rExp').textContent);
-  check('report: row count 3', $('rCnt').textContent === '3', 'rCnt=' + $('rCnt').textContent);
-  check('report: table rows rendered', ($('rBody').innerHTML.match(/<tr>/g)||[]).length === 3);
-
-  // 14. theme switching
-  window.setTheme('dark');
-  check('theme: dark applied', d.documentElement.getAttribute('data-theme') === 'dark');
-  window.setTheme('senja');
-  check('theme: senja applied', d.documentElement.getAttribute('data-theme') === 'senja');
-  window.setTheme('light');
-  check('theme: light removes attr', !d.documentElement.getAttribute('data-theme'));
-
-  // 15. settings persistence
-  $('setName').value = 'Duitku';
-  $('setSym').value = 'IDR';
-  window.saveSettings();
-  await wait(50);
-  check('settings: brand updated', $('brandName').textContent === 'Duitku', 'brand=' + $('brandName').textContent);
-  check('settings: currency symbol applied', $('qSym').textContent === 'IDR', 'qSym=' + $('qSym').textContent);
-  check('settings: saved to localStorage', JSON.parse(window.localStorage.getItem('cf_settings')).appName === 'Duitku');
-
-  // 16. persistence across reload
-  const saved = window.localStorage.getItem('cf_data');
-  check('persist: data written to localStorage', !!saved);
-  const parsed = JSON.parse(saved);
-  check('persist: 3 transactions saved', parsed.tx.length === 3, 'saved tx=' + parsed.tx.length);
-  check('persist: wallets saved', parsed.wps.length === 1);
-  check('persist: portfolio saved', parsed.pfs.length === 1);
-
-  // 17. delete a transaction
-  const victim = window.tx[0].id;
-  window.confirm = () => true;
-  window.delTx(victim);
-  await wait(80);
-  check('delete: transaction removed', window.tx.length === 2, 'tx=' + window.tx.length);
-
-  // 18. logout / login round trip
-  window.doLogout();
-  await wait(60);
-  check('logout: auth screen shown', !$('authView').classList.contains('hid'));
-  $('le').value = 'budi@test.com';
-  $('lp').value = 'rahasia123';
-  window.doLogin();
-  await wait(120);
-  check('login: back in app', $('appView').classList.contains('on'));
-  check('login: name restored', window.user && window.user.name === 'Budi');
-  check('login: transactions still there', window.tx.length === 2, 'tx=' + window.tx.length);
-
-  // results
-  console.log('\n===== SMOKE TEST RESULTS =====');
-  out.forEach(l => console.log(l));
-  const fails = out.filter(l => l.startsWith('FAIL'));
-  console.log('\nTotal: ' + out.length + '  Passed: ' + (out.length - fails.length) + '  Failed: ' + fails.length);
-  console.log('\nRuntime errors captured: ' + errors.length);
-  errors.slice(0, 10).forEach(e => console.log('  ! ' + e.slice(0, 300)));
-  process.exit(fails.length || errors.length ? 1 : 0);
-})();
+  let w = makeDom();
+  const $ = id => w.document.getElementById(id);
+  const has = (id, cls) => $(id).classList.contains(cls);
+  await until(() => w.sb && text(w, 'modeLabel').includes('Cloud'), 'cloud boot');
+  check('boot shows login and hides app', () => { assert(!has('authView','hid')); assert(!has('appView','on')); });
+  click(w, '#modeBtn');
+  check('mode button remains cloud-only', () => { assert.equal(w.mode, 'cloud'); assert.match(text(w, 'modeLabel'), /Cloud/); assert.equal(JSON.parse(w.localStorage.getItem('cf_mode')), 'cloud'); });
+  $('le').value = 'smoke'; $('lp').value = 'wrong-password'; click(w, '#btnDoLogin');
+  await until(() => text(w, 'toasts').includes('Username atau password salah'), 'invalid login feedback');
+  check('invalid login is rejected', () => { assert(!has('authView','hid')); assert(!has('appView','on')); });
+  $('lp').value = 'fake-password'; click(w, '#btnDoLogin');
+  await until(() => has('appView','on') && w.cats.length === 9 && text(w, 'uName') === 'Smoke User', 'login and cloud pull');
+  check('login renders authenticated user', () => { assert(has('authView','hid')); assert.equal(text(w, 'uName'), 'Smoke User'); });
+  check('cloud categories render', () => assert(w.document.querySelectorAll('#qCats .cat').length > 0));
+  $('qAmt').value = '25000'; click(w, '[onclick="saveQuick()"]');
+  await until(() => text(w, 'sCnt') === '1', 'quick transaction');
+  check('quick expense updates dashboard and clears input', () => { assert.equal(digits(text(w, 'sExp')), '25000'); assert.equal($('qAmt').value, ''); });
+  click(w, '[onclick="openTx()"]');
+  check('transaction modal opens', () => assert(has('mTx','on')));
+  $('txN').value = 'Smoke rent'; $('txA').value = '750000';
+  click(w, '#mTx [onclick="saveTx()"]');
+  await until(() => !has('mTx','on') && text(w, 'sCnt') === '2', 'modal transaction');
+  check('modal expense appears in dashboard', () => { assert.equal(digits(text(w, 'sExp')), '775000'); assert.match(text(w, 'recentList'), /Smoke rent/); });
+  click(w, 'nav a[data-p="tx"]');
+  check('transaction page lists saved transaction', () => { assert(has('p-tx','on')); assert.match(text(w, 'p-tx'), /Smoke rent/); });
+  click(w, 'nav a[data-p="rep"]');
+  check('report shows both expenses', () => { assert(has('p-rep','on')); assert.equal(digits(text(w, 'rExp')), '775000'); assert.equal(text(w, 'rCnt'), '2'); });
+  // New DOM has fresh localStorage; only the mock cloud/session survives.
+  w.close(); w = makeDom();
+  await until(() => has('appView','on') && text(w, 'sCnt') === '2', 'new page cloud restore');
+  check('new page restores session and cloud transactions', () => { assert.equal(text(w, 'uName'), 'Smoke User'); assert.equal(digits(text(w, 'sExp')), '775000'); assert.match(text(w, 'recentList'), /Smoke rent/); });
+  click(w, '[title="Keluar"]');
+  check('logout returns to login', () => { assert(!has('authView','hid')); assert(!has('appView','on')); });
+  // Start another fresh page so this assertion cannot pass from stale UI state.
+  w.close(); w = makeDom();
+  await until(() => w.sb && text(w, 'modeLabel').includes('Cloud'), 'logged-out page boot');
+  check('logged-out session does not reopen app', () => assert(!has('appView','on')));
+  $('le').value = 'smoke'; $('lp').value = 'fake-password'; click(w, '#btnDoLogin');
+  await until(() => has('appView','on') && text(w, 'sCnt') === '2', 'login after logout');
+  check('login after logout reloads cloud transactions', () => { assert.equal(text(w, 'uName'), 'Smoke User'); assert.match(text(w, 'recentList'), /Smoke rent/); });
+})().catch(e => { results.push(false); console.log('FAIL  flow completed: ' + (e.stack || e)); })
+.finally(() => {
+  windows.forEach(w => w.close());
+  const failed = results.filter(ok => !ok).length;
+  console.log(`\nTotal: ${results.length}  Passed: ${results.length - failed}  Failed: ${failed}`);
+  console.log('Runtime errors captured: ' + errors.length);
+  errors.forEach(e => console.log('  ! ' + e));
+  if (failed || errors.length) process.exitCode = 1;
+});

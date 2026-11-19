@@ -738,6 +738,11 @@ tbody tr:hover{background:var(--bg)}
 <div class="toasts" id="toasts"></div>
 
 <!-- ============ MODALS ============ -->
+<div class="mz" id="mAdminPassword"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="adminPasswordTitle">
+  <div class="mh"><span class="mt" id="adminPasswordTitle">Reset Password</span><button class="mc" onclick="cancelAdminPassword()" aria-label="Tutup">✕</button></div>
+  <div class="fg"><label for="adminPasswordInput">Password baru (minimal 6 karakter)</label><input type="password" id="adminPasswordInput" autocomplete="new-password" minlength="6"></div>
+  <div class="mf"><button class="btn btn-s" onclick="cancelAdminPassword()">Batal</button><button class="btn btn-p" id="adminPasswordSubmit" onclick="submitAdminPassword()">Simpan</button></div>
+</div></div>
 <div class="mz" id="mTx"><div class="modal">
   <div class="mh"><span class="mt" id="mTxT">Catat Transaksi</span><button class="mc" onclick="closeM('mTx')">✕</button></div>
   <div class="fg"><label>Nama Transaksi</label><input type="text" id="txN" placeholder="Misal: Makan siang, Gaji"></div>
@@ -1577,7 +1582,7 @@ function onPeriodChange(){
   $('rTo').classList.toggle('hid',!cust);
   if(cust && !$('rFrom').value){
     var d=new Date(); d.setDate(1);
-    $('rFrom').value=d.toISOString().slice(0,10);
+    $('rFrom').value=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
     $('rTo').value=todayStr();
   }
   renderReport();
@@ -1585,7 +1590,7 @@ function onPeriodChange(){
 function reportRange(){
   var v=$('rPeriod').value, now=new Date(), y=now.getFullYear(), m=now.getMonth();
   if(v==='tm') return [y+'-'+pad(m+1)+'-01', y+'-'+pad(m+1)+'-31'];
-  if(v==='lm'){ var d1=new Date(y,m-1,1), d2=new Date(y,m,0); return [d1.toISOString().slice(0,10), d2.toISOString().slice(0,10)]; }
+  if(v==='lm'){ var d1=new Date(y,m-1,1), d2=new Date(y,m,0); return [d1.getFullYear()+'-'+pad(d1.getMonth()+1)+'-'+pad(d1.getDate()), d2.getFullYear()+'-'+pad(d2.getMonth()+1)+'-'+pad(d2.getDate())]; }
   if(v==='ty') return [y+'-01-01', y+'-12-31'];
   if(v==='ly') return [(y-1)+'-01-01', (y-1)+'-12-31'];
   if(v==='cust') return [$('rFrom').value||'0000-01-01', $('rTo').value||'9999-12-31'];
@@ -2590,20 +2595,21 @@ function loadAdminUsers(){
       body.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:20px">Belum ada user.</td></tr>';
       return;
     }
-    body.innerHTML = admUsersCache.map(function(u){
+    body.innerHTML = admUsersCache.map(function(u, idx){
       var me = (u.id===user.id);
-      var badge = '<span class="rbadge '+u.role+'">'+u.role+'</span>';
+      var du = cleanUname(u.email);
+      var badge = '<span class="rbadge '+esc(u.role)+'">'+esc(u.role)+'</span>';
       if(u.banned) badge += ' <span class="rbadge banned">banned</span>';
+      var ref = 'admUsersCache['+idx+']';
       var acts = '<div class="acts">'+
-        '<button class="btn btn-s" onclick="admDetail(\''+u.id+'\')">👁️ Data</button>'+
-        '<button class="btn btn-s" onclick="admResetPw(\''+u.id+'\',\''+esc(u.name||du)+'\')" title="Ganti / Reset Password">🔑 Pass</button>'+
+        '<button class="btn btn-s" onclick="admDetail('+ref+'.id)">👁️ Data</button>'+
+        '<button class="btn btn-s" onclick="admResetPw('+ref+'.id,'+ref+'.name||cleanUname('+ref+'.email))" title="Ganti / Reset Password">🔑 Pass</button>'+
         (me ? '<span class="chs">(kamu)</span>' :
-          '<button class="btn btn-s" onclick="admToggleRole(\''+u.id+'\',\''+u.role+'\')">'+(u.role==='admin'?'⬇️ Jadi User':'⬆️ Jadi Admin')+'</button>'+
-          '<button class="btn btn-s" onclick="admToggleBan(\''+u.id+'\','+(u.banned?'false':'true')+')">'+(u.banned?'✅ Unban':'🚫 Ban')+'</button>'+
-          '<button class="btn btn-d" onclick="admPurge(\''+u.id+'\')">🗑️</button>'
+          '<button class="btn btn-s" onclick="admToggleRole('+ref+'.id,'+ref+'.role)">'+(u.role==='admin'?'⬇️ Jadi User':'⬆️ Jadi Admin')+'</button>'+
+          '<button class="btn btn-s" onclick="admToggleBan('+ref+'.id,!'+ref+'.banned)">'+(u.banned?'✅ Unban':'🚫 Ban')+'</button>'+
+          '<button class="btn btn-d" onclick="admPurge('+ref+'.id)">🗑️</button>'
         )+
       '</div>';
-      var du = cleanUname(u.email);
       return '<tr>'+
         '<td><div style="font-weight:600">'+esc(u.name||du)+'</div><div class="chs">@'+esc(du)+'</div></td>'+
         '<td>'+badge+'</td>'+
@@ -2643,15 +2649,34 @@ function admPurge(id){
   });
 }
 
+var adminPasswordTarget = null;
 function admResetPw(id, uname){
-  var np = prompt('Masukkan password baru untuk user "' + uname + '" (minimal 6 karakter):', 'adminadmin');
-  if(np === null) return;
-  np = np.trim();
+  if($('adminPasswordSubmit').disabled) return;
+  adminPasswordTarget = {id:id, name:uname};
+  $('adminPasswordTitle').textContent = 'Reset Password — ' + uname;
+  $('adminPasswordInput').value = '';
+  openM('mAdminPassword');
+  $('adminPasswordInput').focus();
+}
+function cancelAdminPassword(){
+  if($('adminPasswordSubmit').disabled) return;
+  $('adminPasswordInput').value = '';
+  adminPasswordTarget = null;
+  closeM('mAdminPassword');
+}
+function submitAdminPassword(){
+  if(!adminPasswordTarget) return;
+  var np = $('adminPasswordInput').value.trim();
   if(np.length < 6){ toast('Password minimal 6 karakter', 'err'); return; }
-  sb.rpc('admin_set_user_password', { p_target: id, p_new_password: np }).then(function(r){
+  var target = adminPasswordTarget;
+  var btn = $('adminPasswordSubmit');
+  btn.disabled = true;
+  sb.rpc('admin_set_user_password', { p_target: target.id, p_new_password: np }).then(function(r){
     if(r.error){ toast('Gagal: ' + r.error.message, 'err'); return; }
-    toast('Password ' + uname + ' berhasil diubah ke "' + np + '" ✓', 'ok');
-  }).catch(function(e){ toast('Error: ' + e.message, 'err'); });
+    btn.disabled = false;
+    if(adminPasswordTarget === target) cancelAdminPassword();
+    toast('Password ' + target.name + ' berhasil diubah ✓', 'ok');
+  }).catch(function(e){ toast('Error: ' + e.message, 'err'); }).finally(function(){ btn.disabled = false; });
 }
 
 function admDetail(id){
@@ -3026,6 +3051,11 @@ function backup(){
 function restore(ev){
   var f=ev.target.files&&ev.target.files[0];
   if(!f) return;
+  if(mode==='cloud'){
+    toast('Restore cloud sementara dinonaktifkan untuk melindungi data.','err');
+    ev.target.value='';
+    return;
+  }
   var r=new FileReader();
   r.onload=function(e){
     try{
@@ -3138,10 +3168,10 @@ function boot(){
 
   // modal backdrop close
   document.querySelectorAll('.mz').forEach(function(m){
-    m.addEventListener('click',function(e){ if(e.target===m) m.classList.remove('on'); });
+    m.addEventListener('click',function(e){ if(e.target===m){ if(m.id==='mAdminPassword') cancelAdminPassword(); else m.classList.remove('on'); } });
   });
   document.addEventListener('keydown',function(e){
-    if(e.key==='Escape'){ document.querySelectorAll('.mz.on').forEach(function(m){ m.classList.remove('on'); }); }
+    if(e.key==='Escape'){ document.querySelectorAll('.mz.on').forEach(function(m){ if(m.id==='mAdminPassword') cancelAdminPassword(); else m.classList.remove('on'); }); }
   });
 
   // Enter to save quick amount
