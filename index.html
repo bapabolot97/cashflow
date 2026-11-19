@@ -994,7 +994,7 @@ function showDbNotice(){
       '<button class="btn btn-p" onclick="location.reload()">🔄 Sudah, refresh sekarang</button>'+
       '<button class="btn btn-s" onclick="document.getElementById(\'dbNotice\').classList.add(\'hid\')">Tutup</button>'+
     '</div>'+
-    '<p style="font-size:11px;color:var(--text2);margin-top:12px">Atau pindah ke Mode Local (tanpa akun) kalau mau langsung pakai tanpa setup.</p>'+
+    '<p style="font-size:11px;color:var(--text2);margin-top:12px">Aplikasi memerlukan koneksi cloud untuk masuk dan menyimpan data.</p>'+
   '</div>';
   document.body.appendChild(box);
 }
@@ -2634,7 +2634,7 @@ function admToggleRole(id, cur){
   });
 }
 function admToggleBan(id, val){
-  if(!confirm(val?'Ban user ini? Mereka tidak bisa akses lagi.':'Unban user ini?')) return;
+  if(!confirm(val?'Tandai user sebagai banned? Akses data yang sudah aktif belum tentu langsung terblokir.':'Unban user ini?')) return;
   sb.rpc('admin_set_ban',{target:id, val:val}).then(function(r){
     if(r.error){ toast(r.error.message,'err'); return; }
     toast(val?'User dibanned':'User di-unban','ok'); loadAdminUsers();
